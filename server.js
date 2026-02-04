@@ -8,7 +8,7 @@ app.use(cors());
 
 mongoose.connect('mongodb+srv://ayushkotibox_db_user:VBNTroMF9ZBUM2Up@cluster0.pbxm0sd.mongodb.net/DB?appName=Cluster0', {})
     .then(() => {
-        console.log("Connected to MongoDB")
+        console.log("Connected to the  MongoDB")
     })
     .catch((error) => {
         console.error("Error connecting to MongoDB:", error);
