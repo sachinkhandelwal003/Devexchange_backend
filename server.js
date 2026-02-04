@@ -13,35 +13,27 @@ dotenv.config();
 const createAdminAccount = async () => {
   try {
     const adminEmail = "admin@gmail.com";
-    const adminPassword = "admin123"; // Ise .env mein rakhna behtar hai
+    const adminPassword = "admin123"; 
 
-    // 1. Check karein ki admin exist karta hai ya nahi
     const existingAdmin = await User.findOne({ email: adminEmail });
-
     if (!existingAdmin) {
-      // 2. Agar nahi hai, toh password hash karein
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
-
-      // 3. Naya Admin Object banayein
       const newAdmin = new User({
         username: "SuperAdmin",
         email: adminEmail,
         password: hashedPassword,
-        accountType: "admin", // Role set karein
+        accountType: "admin",
         userStatus: "active",
         creditRef: "ADMIN001",
-        balanceStatus: "good",
-        exposureLimit: 100000, // Admin ke liye high limit
-        defaultPercent: 0
+        exposureLimit: 1000000,
       });
-
       await newAdmin.save();
-      console.log("✅ Admin account created successfully!");
+      console.log("✅ Admin account created: admin@gmail.com / admin123");
     } else {
-      console.log("ℹ️ Admin account already exists. Ready to login.");
+      console.log("ℹ️ Admin account already exists.");
     }
   } catch (error) {
-    console.error("❌ Error creating admin account:", error.message);
+    console.error("❌ Admin creation error:", error.message);
   }
 };
 
