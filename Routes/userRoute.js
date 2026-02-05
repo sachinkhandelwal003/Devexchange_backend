@@ -8,6 +8,8 @@ import {
   loginUser,   // Imported
   loginAdmin,  // Imported
 } from "../Controllers/userController.js";
+import { verifyToken } from "../utils/VerifyToken.js";
+import { verifyAdmin } from "../utils/verifyAdmin.js";
 
 const router = express.Router();
 
@@ -23,10 +25,10 @@ router.post("/admin-login", loginAdmin);
 // --- CRUD ROUTES ---
 
 // Create user (Register)
-router.post("/create-user", createUser);
+router.post("/create-user",verifyToken,createUser);
 
 // Get all users
-router.get("/", getAllUsers);
+router.get("/get-all-users", verifyToken,verifyAdmin,getAllUsers);
 
 // Get single user
 router.get("/:id", getUserById);

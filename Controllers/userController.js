@@ -156,6 +156,9 @@ import jwt from "jsonwebtoken";
 // --- 1. REGISTER USER (Create) ---
 export const createUser = async (req, res) => {
   try {
+    const token_user = req.user;
+
+    console.log("token userrrrrrrrrrrrrrr",token_user);
     const { client_name, password } = req.body;
 
     const userNameExists = await User.findOne({ client_name });
@@ -282,7 +285,7 @@ export const getAllUsers = async (req, res) => {
       createdAt: -1,
     });
 
-    res.json({ success: true, count: users.length, data: users });
+    res.json({ success: true, count: users.length, data: users,message:"All users fetched successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });
   }
