@@ -17,11 +17,7 @@ app.use(express.json()); // JSON data padhne ke liye
 app.use(express.urlencoded({ extended: true })); // Form data ke liye
 app.use(cors({
   origin: "http://localhost:5173",
-<<<<<<< HEAD
   methods: ["GET", "POST", "PUT", "DELETE"],
-=======
-  methods: ["GET", "POST", "PUT",  "DELETE"],
->>>>>>> 4924a94285f22d5f876e995ceb31c83548abd91a
   credentials: true
 })); // Frontend ko allow karne ke liye
 
