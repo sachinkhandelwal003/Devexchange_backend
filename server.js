@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import morgan from "morgan";
 
 // 1. Files Import karein (Routes aur Utils)
 import userRoutes from "./Routes/userRoute.js";
@@ -23,6 +24,7 @@ app.use(cors({
 
 // 4. Routes Define karein
 // Jab bhi koi '/api/users' par request karega, wo userRoutes file mein jayega
+app.use(morgan("dev"));
 app.use("/api/users", userRoutes);
 app.get("/",(req, res) => {
   res.send("Welcome to the DevExchange API!");

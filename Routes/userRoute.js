@@ -16,7 +16,7 @@ const router = express.Router();
 // --- AUTHENTICATION ROUTES ---
 
 // User Login -> http://localhost:3000/api/users/login
-router.post("/login", loginUser);
+router.post("/user-login", loginUser);
 
 // Admin Login -> http://localhost:3000/api/users/admin-login
 router.post("/admin-login", loginAdmin);

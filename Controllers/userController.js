@@ -158,7 +158,7 @@ export const createUser = async (req, res) => {
   try {
     const token_user = req.user;
 
-    console.log("token userrrrrrrrrrrrrrr",token_user);
+    console.log("token userrrrrrrrrrrrrrr", token_user);
     const { client_name, password } = req.body;
 
     const userNameExists = await User.findOne({ client_name });
@@ -199,19 +199,19 @@ export const createUser = async (req, res) => {
 // --- 2. USER LOGIN ---
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email });
+    const { client_name, password } = req.body;
+    console.log("client_name and password", client_name, password);
+    const user = await User.findOne({ client_name });
     if (!user)
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
 
     // Role Check
-    if (user.accountType === "admin") {
+    if (user.account_type === "admin") {
       return res
         .status(403)
-        .json({ success: false, message: "Admins please use Admin Login" });
+        .json({ success: false, message: "Admin cannot login here" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -221,7 +221,7 @@ export const loginUser = async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
 
     const token = jwt.sign(
-      { id: user._id, role: user.accountType },
+      { id: user._id, role: user.account_type },
       process.env.JWT_SECRET || "secret",
       { expiresIn: "1d" },
     );
@@ -246,7 +246,7 @@ export const loginAdmin = async (req, res) => {
         .json({ success: false, message: "Admin not found" });
 
     // Strict Role Check
-    if (user.accountType !== "admin") {
+    if (user.account_type !== "admin") {
       return res
         .status(403)
         .json({ success: false, message: "Access Denied. Not an Admin." });
@@ -285,7 +285,12 @@ export const getAllUsers = async (req, res) => {
       createdAt: -1,
     });
 
-    res.json({ success: true, count: users.length, data: users,message:"All users fetched successfully" });
+    res.json({
+      success: true,
+      count: users.length,
+      data: users,
+      message: "All users fetched successfully",
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });
   }
