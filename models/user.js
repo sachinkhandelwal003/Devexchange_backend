@@ -1,67 +1,65 @@
 import mongoose from "mongoose";
+ // client_name , password , full_name,city,phone_number, account_type , credit_ref, comission_setting_upline, 
+ // comission_setting_downline,comission_setting_our , partnership_upline, partnership_downline, partnership_our ,
+ // transaction_password
 
 const userSchema = new mongoose.Schema(
   {
-    username: {
+    client_name: {
       type: String,
-      required: true,
+      required: false,
+      unique: true,
       trim: true,
-      unique: true, // ✅ IMPORTANT: Taaki sabka username alag ho
     },
 
-    // ✅ ADDED: Email field (Login ke liye best rehta hai)
-    email: {
-      type: String,
-      required: true,
-      unique: true, // Ek email se ek hi account banega
-      trim: true,
-      lowercase: true, // Taaki 'Admin@gmail.com' aur 'admin@gmail.com' same maane jayein
-    },
-
-    // ✅ ADDED: Password field (Hash save karne ke liye)
     password: {
       type: String,
-      required: true,
+      required: false,
     },
 
-    creditRef: {
+    full_name: {
       type: String,
-      default: "",
+      required: false,
+      trim: true,
     },
 
-    userStatus: {
+    city: {
       type: String,
-      enum: ["active", "inactive", "suspended"],
-      default: "active",
+      trim: true,
     },
 
-    balanceStatus: {
+    phone_number: {
       type: String,
-      enum: ["good", "warning", "blocked"],
-      default: "good",
+      required: false,
+      unique: true,
     },
 
-    exposureLimit: {
-      type: Number,
-      default: 0,
-    },
-
-    defaultPercent: {
-      type: Number,
-      default: 0,
-    },
-
-    accountType: {
+    account_type: {
       type: String,
-      enum: ["admin", "user", "agent"],
+      enum: ["admin", "agent", "user"],
       default: "user",
     },
+
+    credit_ref: {
+      type: Number,
+      default: 0,
+    },
+
+    comission_setting_upline: {type: Number, default: 0, required: false,},
+    comission_setting_downline: {type: Number, default: 0, required: false,},
+    comission_setting_our: {type: Number, default: 0, required: false,},
+
+    partnership_upline: {type: Number, default: 0, required: false,},
+    partnership_downline: {type: Number, default: 0, required: false,},
+    partnership_our: {type: Number, default: 0, required: false,},
+
+    transaction_password: {
+      type: String,
+      required: false,
+      default:""
+    },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const User = mongoose.model("User", userSchema);
-
-export default User;
+export default mongoose.model("User", userSchema);

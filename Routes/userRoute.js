@@ -23,7 +23,7 @@ router.post("/admin-login", loginAdmin);
 // --- CRUD ROUTES ---
 
 // Create user (Register)
-router.post("/", createUser);
+router.post("/create-user", createUser);
 
 // Get all users
 router.get("/", getAllUsers);

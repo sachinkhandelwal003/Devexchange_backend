@@ -24,6 +24,9 @@ app.use(cors({
 // 4. Routes Define karein
 // Jab bhi koi '/api/users' par request karega, wo userRoutes file mein jayega
 app.use("/api/users", userRoutes);
+app.get("/",(req, res) => {
+  res.send("Welcome to the DevExchange API!");
+});
 
 // 5. Database Connection & Server Start
 mongoose

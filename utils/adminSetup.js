@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs"; // Password hash karne ke liye
 const createAdminAccount = async () => {
   try {
     const adminEmail = "admin@gmail.com";
-    const adminPassword = "admin123";
+    const adminPassword = "admin123"; 
 
     // 1. Check karein ki Admin pehle se hai ya nahi
     const existingAdmin = await User.findOne({ email: adminEmail });
