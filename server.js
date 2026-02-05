@@ -1,59 +1,41 @@
 import express from "express";
-import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import bcrypt from "bcrypt";
-import User from  "./models/user.js"
+import cors from "cors";
+
+// 1. Files Import karein (Routes aur Utils)
 import userRoutes from "./Routes/userRoute.js";
+import createAdminAccount from "./utils/adminSetup.js"; // Admin create karne wala function yahan import hoga
 
-
-
-dotenv.config();
-
-const createAdminAccount = async () => {
-  try {
-    const adminEmail = "admin@gmail.com";
-    const adminPassword = "admin123"; 
-
-    const existingAdmin = await User.findOne({ email: adminEmail });
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
-      const newAdmin = new User({
-        username: "SuperAdmin",
-        email: adminEmail,
-        password: hashedPassword,
-        accountType: "admin",
-        userStatus: "active",
-        creditRef: "ADMIN001",
-        exposureLimit: 1000000,
-      });
-      await newAdmin.save();
-      console.log("✅ Admin account created: admin@gmail.com / admin123");
-    } else {
-      console.log("ℹ️ Admin account already exists.");
-    }
-  } catch (error) {
-    console.error("❌ Admin creation error:", error.message);
-  }
-};
-
-const PORT = process.env.PORT || 3000;
+// 2. Configuration Setup
+dotenv.config(); // .env file read karne ke liye
 const app = express();
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }));
+const PORT = process.env.PORT || 3000;
 
+// 3. Middlewares (Global Rules)
+app.use(express.json()); // JSON data padhne ke liye
+app.use(express.urlencoded({ extended: true })); // Form data ke liye
+app.use(cors()); // Frontend ko allow karne ke liye
 
-
-app.use(cors());
+// 4. Routes Define karein
+// Jab bhi koi '/api/users' par request karega, wo userRoutes file mein jayega
 app.use("/api/users", userRoutes);
-mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/mydb")
-    .then(() => {
-        console.log("Connected to the  MongoDB")
-    })
-    .catch((error) => {
-        console.error("Error connecting to MongoDB:", error);
-    });
 
-app.listen(PORT, () => {
-    console.log(`server is running on port ${PORT}`);
-});
+// 5. Database Connection & Server Start
+mongoose
+  .connect(process.env.MONGO_URI || "mongodb://localhost:27017/mydb")
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+
+    // 👉 Yahan call karein Admin banane wala function
+    // Ye tabhi chalega jab DB connect ho jayega
+    createAdminAccount(); 
+
+    // Server start karein
+    app.listen(PORT, () => {
+      console.log(` Server running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("MongoDB Connection Error:", error);
+  });
