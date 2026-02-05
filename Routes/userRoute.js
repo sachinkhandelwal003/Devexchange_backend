@@ -7,6 +7,7 @@ import {
   deleteUser,
   loginUser,   // Imported
   loginAdmin,  // Imported
+  AdminChangePassword
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
@@ -23,6 +24,7 @@ router.post("/user-login", loginUser);
 router.post("/admin-login", loginAdmin);
 
 
+router.post("/admin-change-password",verifyToken,verifyAdmin, AdminChangePassword);
 // --- CRUD ROUTES ---
 
 // Create user (Register)

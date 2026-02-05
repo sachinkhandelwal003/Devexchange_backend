@@ -239,7 +239,7 @@ export const loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
     console.log("username and password", username, password);
-    const user = await User.findOne({ client_name: username});
+    const user = await User.findOne({ client_name: username });
     if (!user)
       return res
         .status(404)
@@ -275,6 +275,31 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
+export const AdminChangePassword = async (req, res) => {
+  try {
+    const { password, old_password } = req.body;
+    // console.log("username and password", username, password);
+    const user = await User.findOne({ account_type: "admin" });
+
+    const isMatch = await bcrypt.compare(old_password,user.password);
+    if (!isMatch)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Old Password" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    let data = await User.findByIdAndUpdate(user._id, { password: hashedPassword });
+    res.status(200).json({
+      success: true,
+      message: "Admin Password Changed Successfully",
+      data: data,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 // --- CRUD Operations ---
 
 // 👉 UPDATED: Admin ab list mein nahi dikhega
@@ -282,25 +307,28 @@ export const getAllUsers = async (req, res) => {
   try {
     let limit = Number(req.query.limit) || 10;
     let page = Number(req.query.page) || 1;
-    let skip = (page-1)*limit;
+    let skip = (page - 1) * limit;
 
-    let query = { account_type: { $ne: "admin" } }
+    let query = { account_type: { $ne: "admin" } };
 
     let search = req.query.search || "";
 
-    if(search!=""){
-      query.$or=[
-        {client_name: {$regex: search, $options: "i"}},
-        {full_name: {$regex: search, $options: "i"}},
-      ]
+    if (search != "") {
+      query.$or = [
+        { client_name: { $regex: search, $options: "i" } },
+        { full_name: { $regex: search, $options: "i" } },
+      ];
     }
 
-     const totalUsers = await User.countDocuments(query);
+    const totalUsers = await User.countDocuments(query);
 
     // { accountType: { $ne: "admin" } } -> Iska matlab "Not Equal to Admin"
-    const users = await User.find(query).sort({
-      createdAt: -1,
-    }).skip(skip).limit(limit);
+    const users = await User.find(query)
+      .sort({
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
