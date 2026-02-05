@@ -18,10 +18,10 @@ const createAdminAccount = async () => {
 
       // 3. Naya Admin object banayein (Saari required fields ke saath)
       const newAdmin = new User({
-        username: "SuperAdmin",
+        client_name: "SuperAdmin",
         email: adminEmail,
         password: hashedPassword,
-        accountType: "admin",       // 👈 Sabse important field
+        account_type: "admin",       // 👈 Sabse important field
         userStatus: "active",
         creditRef: "ADMIN001",      // Aapke schema ke mutabik
         exposureLimit: 1000000,     // Default limit

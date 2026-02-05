@@ -17,7 +17,7 @@ const router = express.Router();
 
 // User Login -> http://localhost:3000/api/users/login
 router.post("/user-login", loginUser);
-router.post("/user-forgot-password", forgotPassword);
+// router.post("/user-forgot-password", forgotPassword);
 
 // Admin Login -> http://localhost:3000/api/users/admin-login
 router.post("/admin-login", loginAdmin);
