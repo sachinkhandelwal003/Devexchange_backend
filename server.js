@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json()); // JSON data padhne ke liye
 app.use(express.urlencoded({ extended: true })); // Form data ke liye
 app.use(cors({
-  origin: "http://localhost:5174",
+  origin: "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 })); // Frontend ko allow karne ke liye
