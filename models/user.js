@@ -8,7 +8,6 @@ const userSchema = new mongoose.Schema(
     client_name: {
       type: String,
       required: false,
-      unique: true,
       trim: true,
     },
 
@@ -31,7 +30,7 @@ const userSchema = new mongoose.Schema(
     phone_number: {
       type: String,
       required: false,
-      unique: true,
+      
     },
 
     account_type: {
