@@ -15,7 +15,11 @@ const PORT = process.env.PORT || 3000;
 // 3. Middlewares (Global Rules)
 app.use(express.json()); // JSON data padhne ke liye
 app.use(express.urlencoded({ extended: true })); // Form data ke liye
-app.use(cors()); // Frontend ko allow karne ke liye
+app.use(cors({
+  origin: "http://localhost:5174",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+})); // Frontend ko allow karne ke liye
 
 // 4. Routes Define karein
 // Jab bhi koi '/api/users' par request karega, wo userRoutes file mein jayega
