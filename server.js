@@ -22,7 +22,7 @@ app.use(cors({})); // Frontend ko allow karne ke liye
 // Jab bhi koi '/api/users' par request karega, wo userRoutes file mein jayega
 app.use(morgan("dev"));
 app.use("/api/users", userRoutes);
-app.get("/",(req, res) => {
+app.get("/", (req, res) => {
   res.send("Welcome to the DevExchange API!");
 });
 
@@ -34,7 +34,7 @@ mongoose
 
     // 👉 Yahan call karein Admin banane wala function
     // Ye tabhi chalega jab DB connect ho jayega
-    createAdminAccount(); 
+    createAdminAccount();
 
     // Server start karein
     app.listen(PORT, () => {

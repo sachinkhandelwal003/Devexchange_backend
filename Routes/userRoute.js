@@ -7,10 +7,12 @@ import {
   deleteUser,
   loginUser,   // Imported
   loginAdmin,  // Imported
-  AdminChangePassword
+  AdminChangePassword,
+  getAllAccountStatements
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
+import  verifyUser  from "../utils/verifyUser.js";
 
 const router = express.Router();
 
@@ -32,6 +34,12 @@ router.post("/create-user",verifyToken,createUser);
 
 // Get all users
 router.get("/get-all-users", verifyToken,verifyAdmin,getAllUsers);
+
+router.get("/get-all-account-statements", verifyToken,verifyUser,getAllAccountStatements);
+
+// get all account statements
+// router.get("/get-all-account-statements")
+
 
 // Get single user
 router.get("/:id", getUserById);
