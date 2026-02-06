@@ -211,6 +211,8 @@ export const getAllAccountStatements = async (req, res) => {
 
     let type = req.query.type || "";
 
+    let search = req.query.search || "";
+
     let query = {
       customer_id: customer._id
     }
@@ -223,18 +225,20 @@ export const getAllAccountStatements = async (req, res) => {
       }
     }
 
+    if (search != "") {
+      query.remark = { $regex: search, $options: "i" }
+    }
 
-    if(from || to){
-      query.createdAt = {} ;
-      if(from) query.createdAt.$gte = new Date(from);
-      if(to) query.createdAt.$lte = new Date(to);
+
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to) query.createdAt.$lte = new Date(to);
     }
 
     let statements = await AccountStatement.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
 
-    const totalStatements = await AccountStatement.countDocuments({
-      customer_id: customer._id
-    });
+    const totalStatements = await AccountStatement.countDocuments(query);
 
     return res.status(200).json({
       success: true,
