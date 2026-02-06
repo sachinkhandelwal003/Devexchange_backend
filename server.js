@@ -7,6 +7,7 @@ import morgan from "morgan";
 // 1. Files Import karein (Routes aur Utils)
 import userRoutes from "./Routes/userRoute.js";
 import createAdminAccount from "./utils/adminSetup.js"; // Admin create karne wala function yahan import hoga
+import AccountStatementCategory from "./models/accountStatementCategories.js";
 
 // 2. Configuration Setup
 dotenv.config(); // .env file read karne ke liye

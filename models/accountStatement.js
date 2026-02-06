@@ -4,7 +4,7 @@ const accountStatementSchema = new mongoose.Schema(
     {
         customer_id: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User', 
+            ref: 'User',
             default: null
         },
         credit: {
@@ -26,6 +26,11 @@ const accountStatementSchema = new mongoose.Schema(
             type: String,
             default: "",
             required: false
+        },
+        type: {
+            type: [mongoose.Schema.Types.ObjectId],
+            default: [],
+            ref: "AccountStatementCategory"
         }
     },
     { timestamps: true }

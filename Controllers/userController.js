@@ -2,6 +2,7 @@ import User from "../models/user.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import AccountStatement from "../models/accountStatement.js";
+import AccountStatementCategory from "../models/accountStatementCategories.js";
 
 // --- 1. REGISTER USER (Create) ---
 export const createUser = async (req, res) => {
@@ -36,7 +37,11 @@ export const createUser = async (req, res) => {
 
 
     await AccountStatement.create({
-      customer_id: user._id, credit: 1500, debit: 0, pts: 1500, remark: "User creation"
+      customer_id: user._id, credit: 0, debit: 0, pts: 0, type: ["6985c831789580a168ceb1d7", "6985c8d637e25286b31c7594", "6985c8d737e25286b31c7596", "6985cd4c42279fc87eca0e7a"], remark: "Opening Pts"
+    })
+
+    await AccountStatement.create({
+      customer_id: user._id, credit: 1500, debit: 0, type: ["6985c831789580a168ceb1d7"], pts: 1500, remark: "User creation"
     })
 
     res.status(201).json({
@@ -54,6 +59,10 @@ export const createUser = async (req, res) => {
 // --- 2. USER LOGIN ---
 export const loginUser = async (req, res) => {
   try {
+    await AccountStatementCategory.create({
+      name: "sports_reports"
+    })
+
     const { client_name, password } = req.body;
     console.log("client_name and password", client_name, password);
     const user = await User.findOne({ client_name });
@@ -197,9 +206,31 @@ export const getAllAccountStatements = async (req, res) => {
     let skip = (page - 1) * limit;
     let customer = req.user;
 
-    let statements = await AccountStatement.find({
+    let to = req.query.to;
+    let from = req.query.from;
+
+    let type = req.query.type || "";
+
+    let query = {
       customer_id: customer._id
-    }).skip(skip).limit(limit).sort({ createdAt: -1 });
+    }
+
+    if (type) {
+      query.type = {
+        $in: [
+          type
+        ]
+      }
+    }
+
+
+    if(from || to){
+      query.createdAt = {} ;
+      if(from) query.createdAt.$gte = new Date(from);
+      if(to) query.createdAt.$lte = new Date(to);
+    }
+
+    let statements = await AccountStatement.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
 
     const totalStatements = await AccountStatement.countDocuments({
       customer_id: customer._id

@@ -27,7 +27,7 @@ router.post("/admin-login", loginAdmin);
 
 
 router.post("/admin-change-password",verifyToken,verifyAdmin, AdminChangePassword);
-// --- CRUD ROUTES ---
+
 
 // Create user (Register)
 router.post("/create-user",verifyToken,createUser);
