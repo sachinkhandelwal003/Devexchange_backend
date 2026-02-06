@@ -255,6 +255,24 @@ export const getAllAccountStatements = async (req, res) => {
   }
 };
 
+
+export const getProfile = async (req, res) => {
+  try {
+
+    let user = req.user;
+
+    let data = await User.findOne({ _id: user.id })
+
+    return res.status(200).json({
+      success: true,
+      data: data,
+      message: "Account Details fetched successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 export const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);

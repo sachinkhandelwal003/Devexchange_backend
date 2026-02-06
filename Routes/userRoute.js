@@ -8,7 +8,8 @@ import {
   loginUser,   // Imported
   loginAdmin,  // Imported
   AdminChangePassword,
-  getAllAccountStatements
+  getAllAccountStatements,
+  getProfile
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
@@ -37,9 +38,7 @@ router.get("/get-all-users", verifyToken,verifyAdmin,getAllUsers);
 
 router.get("/get-all-account-statements", verifyToken,verifyUser,getAllAccountStatements);
 
-// get all account statements
-// router.get("/get-all-account-statements")
-
+router.get("/get-profile", verifyToken,getProfile);
 
 // Get single user
 router.get("/:id", getUserById);
