@@ -36,6 +36,22 @@ export const getExposureLimit = async (req, res) => {
 }
 
 
+export const getCreditLimit = async (req, res) => {
+    try {
+        let { user_id } = req.query;
+        let userExists = await user.findOne({ _id: user_id }).select("last_credit");
+
+        return res.json({
+            status: "success",
+            data: {
+                credit_limit: userExists.last_credit
+            }
+        })
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+}
 
 
 
