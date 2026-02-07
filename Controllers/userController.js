@@ -56,12 +56,61 @@ export const createUser = async (req, res) => {
   }
 };
 
+
+export const changeStatus = async (req, res) => {
+  try {
+    const token_user = req.user;
+
+    console.log("token userrrrrrrrrrrrrrr", token_user);
+    const { client_name, password } = req.body;
+
+    const userNameExists = await User.findOne({ client_name });
+    if (userNameExists) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Username already exists" });
+    }
+
+    // Hash Password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+    const hashedTransactionPassword = await bcrypt.hash(
+      req.body.transaction_password,
+      salt,
+    );
+
+    // Create
+    const user = await User.create({
+      ...req.body,
+      password: hashedPassword,
+      transaction_password: hashedTransactionPassword,
+    });
+
+
+    await AccountStatement.create({
+      customer_id: user._id, credit: 0, debit: 0, pts: 0, type: ["6985c831789580a168ceb1d7", "6985c8d637e25286b31c7594", "6985c8d737e25286b31c7596", "6985cd4c42279fc87eca0e7a"], remark: "Opening Pts"
+    })
+
+    await AccountStatement.create({
+      customer_id: user._id, credit: 1500, debit: 0, type: ["6985c831789580a168ceb1d7"], pts: 1500, remark: "User creation"
+    })
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: user,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Server Error", error: error.message });
+  }
+};
+
 // --- 2. USER LOGIN ---
 export const loginUser = async (req, res) => {
   try {
-    await AccountStatementCategory.create({
-      name: "sports_reports"
-    })
 
     const { client_name, password } = req.body;
     console.log("client_name and password", client_name, password);

@@ -26,9 +26,7 @@ router.post("/user-login", loginUser);
 // Admin Login -> http://localhost:3000/api/users/admin-login
 router.post("/admin-login", loginAdmin);
 
-
 router.post("/admin-change-password",verifyToken,verifyAdmin, AdminChangePassword);
-
 
 // Create user (Register)
 router.post("/create-user",verifyToken,createUser);
@@ -38,7 +36,7 @@ router.get("/get-all-users", verifyToken,verifyAdmin,getAllUsers);
 
 router.get("/get-all-account-statements", verifyToken,verifyUser,getAllAccountStatements);
 
-router.get("/get-profile", verifyToken,getProfile);
+router.get("/get-profile",verifyToken,getProfile);
 
 // Get single user
 router.get("/:id", getUserById);
