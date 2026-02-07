@@ -18,6 +18,22 @@ export const getAdminAndUserCurrentBalance = async (req, res) => {
     }
 }
 
+export const getExposureLimit = async (req, res) => {
+    try {
+        let { user_id } = req.query;
+        let userExists = await user.findOne({ _id: user_id }).select("exposure_limit");
+
+        return res.json({
+            status: "success",
+            data: {
+                exposure_limit: userExists.exposure_limit
+            }
+        })
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+}
 
 
 
