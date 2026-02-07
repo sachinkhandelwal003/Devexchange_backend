@@ -71,6 +71,16 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       required: false
+    },
+    is_active: {
+      type: Boolean,
+      default: false,
+      required: false
+    },
+    can_bet: {
+      type: Boolean,
+      default: false,
+      required: false
     }
   },
   { timestamps: true }

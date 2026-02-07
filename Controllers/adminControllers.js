@@ -53,6 +53,23 @@ export const getCreditLimit = async (req, res) => {
     }
 }
 
+export const getUserStatuses = async (req, res) => {
+    try {
+        let { user_id } = req.query;
+        let userExists = await user.findOne({ _id: user_id }).select("can_bet is_active");
+        return res.json({
+            status: "success",
+            data: {
+                can_bet: userExists.can_bet,
+                is_active: userExists.is_active
+            }
+        })
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+}
+
 
 
 
