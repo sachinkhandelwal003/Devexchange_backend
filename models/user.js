@@ -39,9 +39,10 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
 
-    credit_ref: {
+    credit_ref: { // credit reference
       type: Number,
       default: 0,
+      required:false
     },
 
     comission_setting_upline: { type: Number, default: 0, required: false, },
@@ -56,7 +57,7 @@ const userSchema = new mongoose.Schema(
       default: 0,
       required: false
     },
-    last_credit: { // last credited from admin
+    last_credit: { 
       type: Number,
       default: 0,
       required: false

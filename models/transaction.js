@@ -5,7 +5,7 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         default: "",
         required: false
-    },// deposit_to_user_from_admin , withdraw_from_user_send_to_admin , set_user_exposure_limit, admin_credit_to_user 
+    },// deposit_to_user_from_admin , withdraw_from_user_send_to_admin , set_user_exposure_limit, set_credit_reference_to_user 
     sender_id: {
         type: String,
         default: "",

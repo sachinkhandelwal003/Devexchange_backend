@@ -236,6 +236,53 @@ export const setExposureLimit = async (req, res) => {
     }
 }
 
+export const updateCreditReference = async (req, res) => {
+    try {
+        let { old_credit, new_credit, transaction_password, user_id } = req.body;
+
+        // check admins transaction password
+        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+
+        let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
+
+        if (!compareTransactionPassword) {
+            return res.status(400).json({
+                message: "Transaction password didn't matched"
+            })
+        }
+        let userExists = await user.findOne({ _id: user_id }).select("exposure_limit");
+        if (!userExists) {
+            return res.json({ message: "No user exists" })
+        }
+
+        let admin = await user.findOne({ account_type: "admin" });
+
+        // frontend will do the calculation from their side and we just needs to update the db
+
+        let updated_user = await user.findOneAndUpdate({ _id: user_id }, { credit_ref: Number(new_credit) }, { new: true });
+
+        // make entry in transaction table 
+        let transaction = await Transaction.create({
+            transaction_type: "set_credit_reference_to_user",
+            sender_id: admin._id,
+            receiver_id: updated_user._id,
+            sender_type: "admin",
+            receiver_type: "user",
+            old_credit: old_credit, new_credit: new_credit
+        });
+
+        return res.json({
+            status: "success",
+            message: "Credit Limit changed successfully",
+            data: {
+                transaction: transaction, user: updated_user
+            }
+        })
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+}
+
 
 
 
