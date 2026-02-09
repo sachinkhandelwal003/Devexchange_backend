@@ -323,6 +323,41 @@ export const changePassword = async (req, res) => {
 }
 
 
+export const changeUserStatus = async (req, res) => {
+    try {
+        let { is_active, can_bet, transaction_password, user_id } = req.body;
+
+        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+
+        let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
+
+        if (!compareTransactionPassword) {
+            return res.status(400).json({
+                message: "Transaction password didn't matched"
+            })
+        }
+        let userExists = await user.findOne({ _id: user_id });
+        if (!userExists) {
+            return res.status(400).json({ message: "No user exists" })
+        }
+        //is_active , can_bet
+        let updateUser = await user.findOneAndUpdate({ _id: user_id }, {
+            is_active: is_active, can_bet: can_bet
+        },{new:true});
+
+        return res.json({
+            status: "success",
+            message: "User updated successfully",
+            data: {
+                user: updateUser
+            }
+        })
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+}
+
+
 
 
 
