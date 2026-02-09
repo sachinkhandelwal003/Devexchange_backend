@@ -19,6 +19,6 @@ router.get("/get-user-statuses", verifyToken, verifyAdmin, getUserStatuses)
 router.post("/make-deposit-transaction", verifyToken, verifyAdmin, makeDepositTransaction)
 router.post("/make-withdraw-transaction", verifyToken, verifyAdmin, makeWithdrawTransaction)
 router.post("/set-exposure-limit", verifyToken, verifyAdmin, setExposureLimit)
-router.post("/update-credit-refernce", verifyToken, verifyAdmin, updateCreditReference)
+router.post("/update-credit-reference", verifyToken, verifyAdmin, updateCreditReference)
 
 export default router;
