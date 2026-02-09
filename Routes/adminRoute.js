@@ -8,7 +8,8 @@ import { getUserStatuses } from "../Controllers/adminControllers.js"
 import { makeDepositTransaction } from "../Controllers/adminControllers.js"
 import { makeWithdrawTransaction } from "../Controllers/adminControllers.js"
 import { setExposureLimit } from "../Controllers/adminControllers.js"
-import {updateCreditReference} from "../Controllers/adminControllers.js"
+import { updateCreditReference } from "../Controllers/adminControllers.js"
+import { changePassword } from "../Controllers/adminControllers.js"
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.post("/make-deposit-transaction", verifyToken, verifyAdmin, makeDepositTr
 router.post("/make-withdraw-transaction", verifyToken, verifyAdmin, makeWithdrawTransaction)
 router.post("/set-exposure-limit", verifyToken, verifyAdmin, setExposureLimit)
 router.post("/update-credit-reference", verifyToken, verifyAdmin, updateCreditReference)
+router.post("/change-users-password", verifyToken, verifyAdmin, changePassword)
 
 export default router;

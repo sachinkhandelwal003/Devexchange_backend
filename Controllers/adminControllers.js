@@ -284,6 +284,45 @@ export const updateCreditReference = async (req, res) => {
 }
 
 
+export const changePassword = async (req, res) => {
+    try {
+        let { new_password, transaction_password, user_id } = req.body;
+
+        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+
+        let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
+
+        if (!compareTransactionPassword) {
+            return res.status(400).json({
+                message: "Transaction password didn't matched"
+            })
+        }
+        let userExists = await user.findOne({ _id: user_id });
+        if (!userExists) {
+            return res.status(400).json({ message: "No user exists" })
+        }
+
+
+        let admin = await user.findOne({ account_type: "admin" });
+
+        const salt = await bcrypt.genSalt(10);
+        let hashedPassword = await bcrypt.hash(new_password, salt);
+        let User = await user.findOneAndUpdate({ _id: user_id }, { password: hashedPassword }, { new: true });
+
+
+        return res.json({
+            status: "success",
+            message: "User updated successfully",
+            data: {
+                user: User
+            }
+        })
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+}
+
+
 
 
 
