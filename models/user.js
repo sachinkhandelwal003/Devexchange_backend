@@ -51,12 +51,6 @@ const userSchema = new mongoose.Schema(
     partnership_upline: { type: Number, default: 0, required: false, },
     partnership_downline: { type: Number, default: 0, required: false, },
     partnership_our: { type: Number, default: 0, required: false, },
-
-    transaction_password: {
-      type: String,
-      required: false,
-      default: ""
-    },
     exposure_limit: { // exposure limit set by admin
       type: Number,
       default: 0,
@@ -81,6 +75,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       required: false
+    },
+    transaction_password: {
+      type: String,
+      required: false,
+      default: ""
     }
   },
   { timestamps: true }

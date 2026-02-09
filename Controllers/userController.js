@@ -126,7 +126,7 @@ export const loginUser = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.account_type },
       process.env.JWT_SECRET || "secret",
-      { expiresIn: "1d" },
+      { expiresIn: "100d" },
     );
 
     res
@@ -164,7 +164,7 @@ export const loginAdmin = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: "admin" },
       process.env.JWT_SECRET || "secret",
-      { expiresIn: "1d" },
+      { expiresIn: "100d" },
     );
 
     res.status(200).json({

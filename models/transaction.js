@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const transactionSchema = new mongoose.Schema({
     transaction_type: {
         type: String,
-        default: "", 
+        default: "",
         required: false
     },// deposit_to_user_from_admin , withdraw_from_user_send_to_admin , set_user_exposure_limit, admin_credit_to_user 
     sender_id: {
@@ -55,10 +55,30 @@ const transactionSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         required: false
+    },
+    admins_previous_amount: {
+        type: Number,
+        default: 0,
+        required: false
+    },
+    users_previous_amount: {
+        type: Number,
+        default: 0,
+        required: false
+    },
+    admins_final_amount: {
+        type: Number,
+        default: 0,
+        required: false
+    },
+    users_final_amount: {
+        type: Number,
+        default: 0,
+        required: false
     }
 })
 
 
-const Transaction = mongoose.model("Transaction",transactionSchema,"Transaction");
+const Transaction = mongoose.model("Transaction", transactionSchema, "Transaction");
 
 export default Transaction;

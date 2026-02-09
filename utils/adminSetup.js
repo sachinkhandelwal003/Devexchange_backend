@@ -6,37 +6,40 @@ import bcrypt from "bcryptjs"; // Password hash karne ke liye
 const createAdminAccount = async () => {
   try {
     const adminEmail = "admin@gmail.com";
-    const adminPassword = "admin123"; 
+    const adminPassword = "Password@123";
 
-    // 1. Check karein ki Admin pehle se hai ya nahi
-    const existingAdmin = await User.findOne({ email: adminEmail });
+
+    const existingAdmin = await User.findOne({ account_type:"admin" });
 
     if (!existingAdmin) {
-      
+
       // 2. Agar nahi hai, to password hash karein
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      let admintransactionPassword = "Password@123";
+      const hashedAdminPassword = await bcrypt.hash(admintransactionPassword, 10)
 
-      // 3. Naya Admin object banayein (Saari required fields ke saath)
+
       const newAdmin = new User({
         client_name: "SuperAdmin",
         email: adminEmail,
         password: hashedPassword,
-        account_type: "admin",       // 👈 Sabse important field
+        account_type: "admin",       
         userStatus: "active",
-        creditRef: "ADMIN001",      // Aapke schema ke mutabik
-        exposureLimit: 1000000,     // Default limit
+        creditRef: "ADMIN001",      
+        exposureLimit: 1000000,     
         balanceStatus: 0,
-        defaultPercent: 100
+        defaultPercent: 100,
+        transaction_password: hashedAdminPassword
       });
 
       // 4. Database mein save karein
       await newAdmin.save();
       console.log("✅ Admin account created successfully: admin@gmail.com");
-      
+
     } else {
       console.log("ℹ️ Admin account already exists.");
     }
-    
+
   } catch (error) {
     console.error("❌ Error creating admin account:", error.message);
   }

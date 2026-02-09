@@ -5,11 +5,13 @@ import { getAdminAndUserCurrentBalance } from "../Controllers/adminControllers.j
 import { getExposureLimit } from "../Controllers/adminControllers.js"
 import { getCreditLimit } from "../Controllers/adminControllers.js"
 import {getUserStatuses} from "../Controllers/adminControllers.js"
+import {makeDepositTransaction} from "../Controllers/adminControllers.js"
 const router = express.Router();
 
 router.get("/get-admin-user-balance", verifyToken, verifyAdmin, getAdminAndUserCurrentBalance)
 router.get("/get-user-exposure-limit", verifyToken, verifyAdmin, getExposureLimit)
 router.get("/get-user-credit-limit", verifyToken, verifyAdmin, getCreditLimit)
 router.get("/get-user-statuses", verifyToken, verifyAdmin, getUserStatuses)
+router.post("/make-deposit-transaction", verifyToken, verifyAdmin, makeDepositTransaction)
 
 export default router;

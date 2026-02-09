@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json()); // JSON data padhne ke liye
 app.use(express.urlencoded({ extended: true })); // Form data ke liye
-app.use(cors({})); // Frontend ko allow karne ke liye
+app.use(cors({})); 
 
 
 app.use(morgan("dev"));
