@@ -123,7 +123,62 @@ export const makeDepositTransaction = async (req, res) => {
 
         return res.json({
             status: "success",
-            message:"Money deposit successfully",
+            message: "Money deposit successfully",
+            data: {
+                transaction: transaction, user: updated_user, admin: updated_admin
+            }
+        })
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+}
+
+
+export const makeWithdrawTransaction = async (req, res) => {
+    try {
+        let { admins_previous_amount, users_previous_amount, admins_final_amount, users_final_amount, amount_to_send, remark, transaction_password, user_id } = req.body;
+
+        // check admins transaction password
+        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+
+        let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
+
+        if (!compareTransactionPassword) {
+            return res.status(400).json({
+                message: "Transaction password didn't matched"
+            })
+        }
+        let userExists = await user.findOne({ _id: user_id }).select("current_balance");
+        if (!userExists) {
+            return res.json({ message: "No user exists" })
+        }
+
+        // let admin = await user.findone({ account_type: "admin" });
+
+        // frontend will do the calculation from their side and we just needs to update the db
+
+        let updated_user = await user.findOneAndUpdate({ _id: user_id }, { current_balance: Number(users_final_amount) }, { new: true });
+        let updated_admin = await user.findOneAndUpdate({ account_type: "admin" }, { current_balance: Number(admins_final_amount) }, { new: true })
+
+
+        // make entry in transaction table 
+        let transaction = await Transaction.create({
+            transaction_type: "withdraw_from_user_send_to_admin",
+            sender_id: updated_admin._id,
+            receiver_id: updated_user._id,
+            remark: remark,
+            sender_type: "user",
+            receiver_type: "admin",
+            amount: Number(amount_to_send),
+            admins_previous_amount: Number(admins_previous_amount),
+            users_previous_amount: Number(users_previous_amount),
+            admins_final_amount: Number(admins_final_amount),
+            users_final_amount: Number(users_final_amount)
+        });
+
+        return res.json({
+            status: "success",
+            message: "Money Withdrawn successfully from users side",
             data: {
                 transaction: transaction, user: updated_user, admin: updated_admin
             }
