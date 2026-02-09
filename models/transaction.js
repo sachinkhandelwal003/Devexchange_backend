@@ -44,7 +44,7 @@ const transactionSchema = new mongoose.Schema({
     new_exposure_limit: {
         type: Number,
         default: 0,
-        required: false
+        required: false 
     },
     old_credit: {
         type: Number,
