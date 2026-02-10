@@ -552,6 +552,13 @@ export const getAllBets = async (req, res) => {
 
         const totalBets = await Bet.countDocuments(query);
 
+        let total_soda_amount = 0;
+        let total_amount = 0;
+        bets.map((bet)=>{
+            total_soda_amount += Number(bet.stake)
+            total_amount += Number(bet.liability)
+        })
+
         return res.status(200).json({
             success: true,
             page,
@@ -560,6 +567,8 @@ export const getAllBets = async (req, res) => {
             totalPages: Math.ceil(totalBets / limit),
             count: bets.length,
             data: bets,
+            total_soda_amount,
+            total_amount,   
             message: "All Bets fetched successfully",
         });
     } catch (error) {
