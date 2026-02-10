@@ -430,8 +430,59 @@ export const DownloadAccountListExcel = async (req, res) => {
     }
 };
 
+// get all admin account statement
+export const adminAccountStatement = async (req, res) => {
+    try {
+
+        let account_type = req.query.account_type || "all"; // all , withdraw/deposit_report 
+        let from = req.query.from || "";
+        let to = req.query.to || "";
+        let client_id = req.query.client_id || "";
+        let page = req.query.page ? Number(req.query.page) : 1;
+        let limit = req.query.limit ? Number(req.query.limit) : 10;
+        let skip = (page - 1) * limit;
+
+        let query = { sender_type: "admin" }
+
+        if (client_id != "") {
+            query.receiver_id = client_id; // receiver will be user
+        }
+
+        if (account_type != "all") {
+            query.transaction_type = account_type;
+        }
+
+        if (from != "" && to != "") {
+            query.createdAt = {
+                $gte: new Date(from),
+                $lte: new Date(to)
+            }
+        }
 
 
+        let all_admin_statements = await Transaction.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+        let totalCount = await Transaction.countDocuments(query);
+
+        return res.status(200).json({
+            status: "success",
+            data: all_admin_statements,
+            pagination: {
+                limit: limit,
+                page: page,
+                total: totalCount,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        })
+    } catch (error) {
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: "Account statements didnt came",
+                error: error.message,
+            });
+        }
+    }
+};
 
 export const changeUserStatus = async (req, res) => {
     try {

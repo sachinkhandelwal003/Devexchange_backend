@@ -11,9 +11,11 @@ import { setExposureLimit } from "../Controllers/adminControllers.js"
 import { updateCreditReference } from "../Controllers/adminControllers.js"
 import { changePassword } from "../Controllers/adminControllers.js"
 import { changeUserStatus } from "../Controllers/adminControllers.js"
-import {DownloadAccountListPdf} from "../Controllers/adminControllers.js"
+import { DownloadAccountListPdf } from "../Controllers/adminControllers.js"
+import { adminAccountStatement } from "../Controllers/adminControllers.js"
 const router = express.Router();
 
+// router.get("/",(req,res)=>{console.log("request came on this ")})
 router.get("/get-admin-user-balance", verifyToken, verifyAdmin, getAdminAndUserCurrentBalance)
 router.get("/get-user-exposure-limit", verifyToken, verifyAdmin, getExposureLimit)
 router.get("/get-user-credit-limit", verifyToken, verifyAdmin, getCreditLimit)
@@ -30,5 +32,7 @@ router.post("/change-user-status", verifyToken, verifyAdmin, changeUserStatus)
 router.get("/download-account-list-pdf", verifyToken, verifyAdmin, DownloadAccountListPdf)
 router.get("/download-account-list-excel", verifyToken, verifyAdmin, DownloadAccountListExcel)
 
+// get admin account statement
+router.get("/admin-account-statement", verifyToken, verifyAdmin, adminAccountStatement)
 
 export default router;
