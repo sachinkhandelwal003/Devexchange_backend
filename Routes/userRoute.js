@@ -49,5 +49,4 @@ router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
 
 router.post("/make-bet", verifyToken, verifyUser, MakeBet)
-
 export default router;

@@ -579,7 +579,6 @@ export const getAllBets = async (req, res) => {
 
 export const getProfitLossOfUsers = async (req, res) => {
     try {
-        // console.log("requesttttttttt ")
         let page = req.query.page ? Number(req.query.page) : 1;
         let limit = req.query.limit ? Number(req.query.limit) : 10;
         let skip = (page - 1) * limit;
@@ -589,6 +588,65 @@ export const getProfitLossOfUsers = async (req, res) => {
         }
         let status = req.query.status || "all"; // profit , loss
 
+        if (status != "all") {
+            if (status == "loss") {
+                query.profit_loss = { $lte: 0 }
+            } else if (status == "profit") {
+                query.profit_loss = { $gt: 0 }
+            }
+        }
+
+        let search = req.query.search || "";
+        if (search != "") {
+            query.$or = [
+                { user_name: { $regex: search, $options: "i" } },
+                { event_name: { $regex: search, $options: "i" } }
+            ]
+        }
+
+        let bets = await Bet.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
+
+        const totalBets = await Bet.countDocuments(query);
+
+
+        return res.status(200).json({
+            success: true,
+            page,
+            limit,
+            total: totalBets,
+            totalPages: Math.ceil(totalBets / limit),
+            count: bets.length,
+            data: bets,
+            message: "All Bets fetched successfully",
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+export const getUsersWinOrLoss = async (req, res) => {
+    try {
+        let page = req.query.page ? Number(req.query.page) : 1;
+        let limit = req.query.limit ? Number(req.query.limit) : 10;
+        let skip = (page - 1) * limit;
+
+        let from = req.query.from || "";
+        let to = req.query.to || "";
+
+
+
+        let query = {
+            bet_status: "settled"
+        }
+        let status = req.query.status || "all"; // profit , loss
+
+        if (from != "" && to != "") {
+            console.log("incomingggggggggggggg dates are ", new Date(from), new Date(to))
+            query.createdAt = {
+                $gte: new Date(from),
+                $lte: new Date(to)
+            }
+        }
         if (status != "all") {
             if (status == "loss") {
                 query.profit_loss = { $lte: 0 }

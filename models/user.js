@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema(
     credit_ref: { // credit reference
       type: Number,
       default: 0,
-      required:false
+      required: false
     },
 
     comission_setting_upline: { type: Number, default: 0, required: false, },
@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema(
       default: 0,
       required: false
     },
-    last_credit: { 
+    last_credit: {
       type: Number,
       default: 0,
       required: false
@@ -75,6 +75,11 @@ const userSchema = new mongoose.Schema(
     can_bet: {
       type: Boolean,
       default: false,
+      required: false
+    },
+    casino_balance: {
+      type: Number,
+      default: 0,
       required: false
     },
     transaction_password: {

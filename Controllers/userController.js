@@ -323,6 +323,7 @@ export const getProfile = async (req, res) => {
 
 export const getUserById = async (req, res) => {
   try {
+    
     const user = await User.findById(req.params.id);
     if (!user)
       return res

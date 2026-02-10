@@ -14,7 +14,8 @@ import { changeUserStatus } from "../Controllers/adminControllers.js"
 import { DownloadAccountListPdf } from "../Controllers/adminControllers.js"
 import { adminAccountStatement } from "../Controllers/adminControllers.js"
 import { getAllBets } from "../Controllers/adminControllers.js"
-import {getProfitLossOfUsers} from "../Controllers/adminControllers.js"
+import { getProfitLossOfUsers } from "../Controllers/adminControllers.js"
+import {getUsersWinOrLoss} from "../Controllers/adminControllers.js"
 const router = express.Router();
 
 // router.get("/",(req,res)=>{console.log("request came on this ")})
@@ -37,9 +38,12 @@ router.get("/download-account-list-excel", verifyToken, verifyAdmin, DownloadAcc
 // get admin account statement
 router.get("/admin-account-statement", verifyToken, verifyAdmin, adminAccountStatement)
 
-router.get("/get-all-bets", verifyToken, verifyAdmin,getAllBets);
+router.get("/get-all-bets", verifyToken, verifyAdmin, getAllBets);
 
 // profit loss reports of user
-router.get("/get-profit-loss-reports", verifyToken, verifyAdmin,getProfitLossOfUsers);
+router.get("/get-profit-loss-reports", verifyToken, verifyAdmin, getProfitLossOfUsers);
+
+// get user win losses
+router.get("/user-win-loss", verifyToken, verifyAdmin, getUsersWinOrLoss)
 
 export default router;
