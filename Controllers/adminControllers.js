@@ -2,7 +2,7 @@ import user from "../models/user.js";
 import Transaction from "../models/transaction.js";
 import bcrypt from "bcryptjs"
 import PDFDocument from "pdfkit";
-
+import ExcelJS from "exceljs"
 export const getAdminAndUserCurrentBalance = async (req, res) => {
     try {
         let { user_id } = req.query;
@@ -326,51 +326,108 @@ export const changePassword = async (req, res) => {
 
 
 export const DownloadAccountListPdf = async (req, res) => {
-  try {
-    const allUsers = await user
-      .find({ account_type: "user" })
-      .sort({ createdAt: -1 });
+    try {
+        const allUsers = await user
+            .find({ account_type: "user" })
+            .sort({ createdAt: -1 });
 
-    const doc = new PDFDocument({ margin: 30, size: "A4" });
+        const doc = new PDFDocument({ margin: 30, size: "A4" });
 
-    const fileName = `account-list-${Date.now()}.pdf`;
+        const fileName = `account-list-${Date.now()}.pdf`;
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${fileName}`
-    );
-
-    doc.pipe(res);
-
-    doc.fontSize(18).text("Account List", { align: "center" });
-    doc.moveDown();
-
-    doc.fontSize(10).text(
-      "Username | Credit | Exposure | Default % | Account Type"
-    );
-    doc.moveDown(0.5);
-
-    if (!allUsers.length) {
-      doc.text("No users found");
-    } else {
-      allUsers.forEach((u) => {
-        doc.text(
-          `${u.client_name} | ${u.credit_ref} | ${u.exposure_limit} | ${u.default_percentage || 0}% | ${u.account_type}`
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=${fileName}`
         );
-      });
-    }
 
-    doc.end();
-  } catch (error) {
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        message: "PDF generation failed",
-        error: error.message,
-      });
+        doc.pipe(res);
+
+        doc.fontSize(18).text("Account List", { align: "center" });
+        doc.moveDown();
+
+        doc.fontSize(10).text(
+            "Username | Credit | Exposure | Default % | Account Type"
+        );
+        doc.moveDown(0.5);
+
+        if (!allUsers.length) {
+            doc.text("No users found");
+        } else {
+            allUsers.forEach((u) => {
+                doc.text(
+                    `${u.client_name} | ${u.credit_ref} | ${u.exposure_limit} | ${u.default_percentage || 0}% | ${u.account_type}`
+                );
+            });
+        }
+
+        doc.end();
+    } catch (error) {
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: "PDF generation failed",
+                error: error.message,
+            });
+        }
     }
-  }
+};
+
+
+export const DownloadAccountListExcel = async (req, res) => {
+    try {
+        const allUsers = await user
+            .find({ account_type: "user" })
+            .sort({ createdAt: -1 });
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Account List");
+
+        // Columns (same as PDF)
+        worksheet.columns = [
+            { header: "Username", key: "client_name", width: 25 },
+            { header: "Credit", key: "credit_ref", width: 15 },
+            { header: "Exposure", key: "exposure_limit", width: 15 },
+            { header: "Default %", key: "default_percentage", width: 15 },
+            { header: "Account Type", key: "account_type", width: 15 },
+        ];
+
+        // Rows
+        allUsers.forEach((u) => {
+            worksheet.addRow({
+                client_name: u.client_name,
+                credit_ref: u.credit_ref,
+                exposure_limit: u.exposure_limit,
+                default_percentage: u.default_percentage || 0,
+                account_type: u.account_type,
+            });
+        });
+
+        // Header styling (optional but nice)
+        worksheet.getRow(1).font = { bold: true };
+
+        const fileName = `account-list-${Date.now()}.xlsx`;
+
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=${fileName}`
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: "Excel generation failed",
+                error: error.message,
+            });
+        }
+    }
 };
 
 

@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
-import { getAdminAndUserCurrentBalance } from "../Controllers/adminControllers.js";
+import { DownloadAccountListExcel, getAdminAndUserCurrentBalance } from "../Controllers/adminControllers.js";
 import { getExposureLimit } from "../Controllers/adminControllers.js"
 import { getCreditLimit } from "../Controllers/adminControllers.js"
 import { getUserStatuses } from "../Controllers/adminControllers.js"
@@ -28,6 +28,7 @@ router.post("/change-user-status", verifyToken, verifyAdmin, changeUserStatus)
 
 // pdf download on Account list 
 router.get("/download-account-list-pdf", verifyToken, verifyAdmin, DownloadAccountListPdf)
+router.get("/download-account-list-excel", verifyToken, verifyAdmin, DownloadAccountListExcel)
 
 
 export default router;
