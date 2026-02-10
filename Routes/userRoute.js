@@ -13,7 +13,8 @@ import {
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
-import  verifyUser  from "../utils/verifyUser.js";
+import verifyUser from "../utils/verifyUser.js";
+import { MakeBet } from "../Controllers/userController.js"
 
 const router = express.Router();
 
@@ -26,17 +27,17 @@ router.post("/user-login", loginUser);
 // Admin Login -> http://localhost:3000/api/users/admin-login
 router.post("/admin-login", loginAdmin);
 
-router.post("/admin-change-password",verifyToken,verifyAdmin, AdminChangePassword);
+router.post("/admin-change-password", verifyToken, verifyAdmin, AdminChangePassword);
 
 // Create user (Register)
-router.post("/create-user",verifyToken,createUser);
+router.post("/create-user", verifyToken, createUser);
 
 // Get all users
-router.get("/get-all-users", verifyToken,verifyAdmin,getAllUsers);
+router.get("/get-all-users", verifyToken, verifyAdmin, getAllUsers);
 
-router.get("/get-all-account-statements", verifyToken,verifyUser,getAllAccountStatements);
+router.get("/get-all-account-statements", verifyToken, verifyUser, getAllAccountStatements);
 
-router.get("/get-profile",verifyToken,getProfile);
+router.get("/get-profile", verifyToken, getProfile);
 
 // Get single user
 router.get("/:id", getUserById);
@@ -46,5 +47,7 @@ router.put("/:id", updateUser);
 
 // Delete user
 router.delete("/:id", deleteUser);
+
+router.post("/make-bet", verifyToken, verifyUser, MakeBet)
 
 export default router;

@@ -3,6 +3,8 @@ import Transaction from "../models/transaction.js";
 import bcrypt from "bcryptjs"
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs"
+import Bet from "../models/bet.js";
+
 export const getAdminAndUserCurrentBalance = async (req, res) => {
     try {
         let { user_id } = req.query;
@@ -517,6 +519,53 @@ export const changeUserStatus = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 }
+
+
+export const getAllBets = async (req, res) => {
+    try {
+        console.log("requesttttttttt ")
+        let page = req.query.page ? Number(req.query.page) : 1;
+        let limit = req.query.limit ? Number(req.query.limit) : 10;
+        let skip = (page - 1) * limit;
+        let filter = req.query.filter || "matched";
+        let back_lay = req.query.back_lay || "all"; // back, lay , all
+
+        let query = {};
+
+        if (filter != "") {
+            query.bet_status = filter
+        }
+
+        if (back_lay != "all") {
+            query.bet_type = back_lay
+        }
+
+        let search = req.query.search || "";
+        if (search != "") {
+            query.$or=[
+                {user_name:{$regex:search,$options:"i"}},
+                {event_name:{$regex:search,$options:"i"}}
+            ]
+        }
+
+        let bets = await Bet.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
+
+        const totalBets = await Bet.countDocuments(query);
+
+        return res.status(200).json({
+            success: true,
+            page,
+            limit,
+            total: totalBets,
+            totalPages: Math.ceil(totalBets / limit),
+            count: bets.length,
+            data: bets,
+            message: "All Bets fetched successfully",
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
 
 
 

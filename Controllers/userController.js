@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import AccountStatement from "../models/accountStatement.js";
 import AccountStatementCategory from "../models/accountStatementCategories.js";
+import Bet from "../models/bet.js";
 
 // --- 1. REGISTER USER (Create) ---
 export const createUser = async (req, res) => {
@@ -203,9 +204,7 @@ export const AdminChangePassword = async (req, res) => {
   }
 };
 
-// --- CRUD Operations ---
 
-// 👉 UPDATED: Admin ab list mein nahi dikhega
 export const getAllUsers = async (req, res) => {
   try {
     let limit = Number(req.query.limit) || 10;
@@ -339,7 +338,6 @@ export const updateUser = async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-      runValidators: true,
     });
     if (!user)
       return res
@@ -361,5 +359,46 @@ export const deleteUser = async (req, res) => {
     res.json({ success: true, message: "User deleted" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Delete failed" });
+  }
+};
+
+
+export const MakeBet = async (req, res) => {
+  try {
+    console.log("bodyyyyyyyyyyyyyyyyyyyy", req.body)
+    let user = await User.findById(req.body.user_id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!user.is_active || !user.can_bet) {
+      return res.status(403).json({
+        success: false,
+        message: "User is not allowed to bet"
+      });
+    }
+
+    let liability = 0;
+
+    if (req.body.bet_type == "back") {
+      liability = req.body.stake;
+    }
+
+    if (req.body.bet_type == "lay") {
+      liability = (req.body.odds - 1) * req.body.stake;
+    }
+
+    if (req.body.liability > user.exposure_limit) {
+      return res.status(400).json({
+        success: false,
+        message: "Exposure limit exceeded"
+      });
+    }
+
+    const bet = await Bet.create({ ...req.body, liability });
+
+    res.json({ success: true, message: "Bet Created successfully", data: bet });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error while making bet", error });
   }
 };
