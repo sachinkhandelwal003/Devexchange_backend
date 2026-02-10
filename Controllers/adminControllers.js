@@ -1,6 +1,7 @@
 import user from "../models/user.js";
 import Transaction from "../models/transaction.js";
 import bcrypt from "bcryptjs"
+import PDFDocument from "pdfkit";
 
 export const getAdminAndUserCurrentBalance = async (req, res) => {
     try {
@@ -323,6 +324,58 @@ export const changePassword = async (req, res) => {
 }
 
 
+
+export const DownloadAccountListPdf = async (req, res) => {
+  try {
+    const allUsers = await user
+      .find({ account_type: "user" })
+      .sort({ createdAt: -1 });
+
+    const doc = new PDFDocument({ margin: 30, size: "A4" });
+
+    const fileName = `account-list-${Date.now()}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${fileName}`
+    );
+
+    doc.pipe(res);
+
+    doc.fontSize(18).text("Account List", { align: "center" });
+    doc.moveDown();
+
+    doc.fontSize(10).text(
+      "Username | Credit | Exposure | Default % | Account Type"
+    );
+    doc.moveDown(0.5);
+
+    if (!allUsers.length) {
+      doc.text("No users found");
+    } else {
+      allUsers.forEach((u) => {
+        doc.text(
+          `${u.client_name} | ${u.credit_ref} | ${u.exposure_limit} | ${u.default_percentage || 0}% | ${u.account_type}`
+        );
+      });
+    }
+
+    doc.end();
+  } catch (error) {
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: "PDF generation failed",
+        error: error.message,
+      });
+    }
+  }
+};
+
+
+
+
 export const changeUserStatus = async (req, res) => {
     try {
         let { is_active, can_bet, transaction_password, user_id } = req.body;
@@ -343,7 +396,7 @@ export const changeUserStatus = async (req, res) => {
         //is_active , can_bet
         let updateUser = await user.findOneAndUpdate({ _id: user_id }, {
             is_active: is_active, can_bet: can_bet
-        },{new:true});
+        }, { new: true });
 
         return res.json({
             status: "success",

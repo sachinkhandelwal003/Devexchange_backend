@@ -10,7 +10,8 @@ import { makeWithdrawTransaction } from "../Controllers/adminControllers.js"
 import { setExposureLimit } from "../Controllers/adminControllers.js"
 import { updateCreditReference } from "../Controllers/adminControllers.js"
 import { changePassword } from "../Controllers/adminControllers.js"
-import {changeUserStatus} from "../Controllers/adminControllers.js"
+import { changeUserStatus } from "../Controllers/adminControllers.js"
+import {DownloadAccountListPdf} from "../Controllers/adminControllers.js"
 const router = express.Router();
 
 router.get("/get-admin-user-balance", verifyToken, verifyAdmin, getAdminAndUserCurrentBalance)
@@ -23,5 +24,10 @@ router.post("/set-exposure-limit", verifyToken, verifyAdmin, setExposureLimit)
 router.post("/update-credit-reference", verifyToken, verifyAdmin, updateCreditReference)
 router.post("/change-users-password", verifyToken, verifyAdmin, changePassword)
 router.post("/change-user-status", verifyToken, verifyAdmin, changeUserStatus)
+
+
+// pdf download on Account list 
+router.get("/download-account-list-pdf", verifyToken, verifyAdmin, DownloadAccountListPdf)
+
 
 export default router;
