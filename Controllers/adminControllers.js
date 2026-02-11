@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs"
 import Bet from "../models/bet.js";
+import Privilige from "../models/Priviliges.js";
 
 export const getAdminAndUserCurrentBalance = async (req, res) => {
     try {
@@ -1036,6 +1037,23 @@ export const GetMatchAnalysis = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+
+export const makePriviliges = async (req, res) => {
+    try {
+
+        let privilge = await Privilige.create({...req.body})
+
+        return res.status(200).json({
+            success: true,
+            data: privilge,
+            message: "Privilige created successfully",
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+
 
 
 

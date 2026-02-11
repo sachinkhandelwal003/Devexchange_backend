@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema(
 
     account_type: {
       type: String,
-      enum: ["agent", "user", "admin"],
+      enum: ["agent", "user", "admin", "admin_staff"],
       default: "user",
     },
 
@@ -86,6 +86,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: false,
       default: ""
+    },
+    priviliges: {
+      type: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Priviliges",
+      }],
+      default: []
     }
   },
   { timestamps: true }

@@ -19,6 +19,7 @@ import { getUsersWinOrLoss } from "../Controllers/adminControllers.js"
 import { DownloadUsersWinLossPdf } from "../Controllers/adminControllers.js"
 import {DownloadUsersWinLossExcel} from "../Controllers/adminControllers.js"
 import {GetMatchAnalysis} from "../Controllers/adminControllers.js"
+import {makePriviliges} from "../Controllers/adminControllers.js"
 
 const router = express.Router();
 
@@ -58,5 +59,7 @@ router.get("/user-win-loss-download-csv", verifyToken, verifyAdmin, DownloadUser
 router.get("/user-win-loss-download-csv", verifyToken, verifyAdmin, DownloadUsersWinLossExcel)
 
 router.get("/match-analysis", verifyToken, verifyAdmin, GetMatchAnalysis)
+
+router.post("/make-all-priviliges",makePriviliges)
 
 export default router;
