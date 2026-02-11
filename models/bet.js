@@ -64,6 +64,13 @@ const BetSchema = new mongoose.Schema(
             index: true,
         },
 
+        bet_sub_type: {
+            type: String,
+            enum: ["casino", "sport", "third_party"],
+            default: "sport",
+            required: false
+        },
+
         odds: {
             type: Number, // U Rate
             required: false,

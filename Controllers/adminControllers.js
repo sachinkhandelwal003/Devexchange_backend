@@ -626,57 +626,77 @@ export const getProfitLossOfUsers = async (req, res) => {
 
 export const getUsersWinOrLoss = async (req, res) => {
     try {
-        let page = req.query.page ? Number(req.query.page) : 1;
-        let limit = req.query.limit ? Number(req.query.limit) : 10;
-        let skip = (page - 1) * limit;
+        // how many bets have user taken of casino type, sport type and third party type
+        // get all the settled bets of those and take their profit loss 
+        // and give total per user and final total of the platform 
+        // and from to also 
 
         let from = req.query.from || "";
         let to = req.query.to || "";
 
-
-
-        let query = {
-            bet_status: "settled"
-        }
-        let status = req.query.status || "all"; // profit , loss
+        let query = { account_type: "user" };
 
         if (from != "" && to != "") {
-            console.log("incomingggggggggggggg dates are ", new Date(from), new Date(to))
-            query.createdAt = {
-                $gte: new Date(from),
-                $lte: new Date(to)
-            }
-        }
-        if (status != "all") {
-            if (status == "loss") {
-                query.profit_loss = { $lte: 0 }
-            } else if (status == "profit") {
-                query.profit_loss = { $gt: 0 }
-            }
+            query.createdAt = { $gte: new Date(from) },
+                query.createdAt = { $lte: new Date(to) }
         }
 
         let search = req.query.search || "";
+
         if (search != "") {
-            query.$or = [
-                { user_name: { $regex: search, $options: "i" } },
-                { event_name: { $regex: search, $options: "i" } }
-            ]
+            query.client_name = new RegExp(`^${search}`, "i");
         }
 
-        let bets = await Bet.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
+        let all_users = await user.find(query);
 
-        const totalBets = await Bet.countDocuments(query);
+        let overall_casino_amount = 0;
+        let overall_sport_amount = 0;
+        let overall_third_party_amount = 0;
+        let overall_profit_loss = 0;
+
+        all_users = await Promise.all(all_users.map(async (user) => {
+            let getAllbetsAmount = await Bet.find({ user_id: user._id, bet_status: "settled" });
+            // console.log("getAllbetsAmountgetAllbetsAmountgetAllbetsAmount",getAllbetsAmount)
+            let casino_amount = 0;
+            let sport_amount = 0;
+            let third_party_amount = 0;
+            let users_profit_loss = 0;
+
+            //// profit_loss,bet_sub_type:casino,sport,third_party
+            getAllbetsAmount.map((bet) => {
+                console.log("code came in this blockkkk",bet)
+                if (bet.bet_sub_type == "casino") {
+                    casino_amount += Number(bet.profit_loss)
+                } else if (bet.bet_sub_type == "sport") {
+                    sport_amount += Number(bet.profit_loss)
+                    console.log("casino_amountcasino_amount",sport_amount)
+                } else if (bet.bet_sub_type == "third_party") {
+                    third_party_amount += Number(bet.profit_loss)
+                }
+            })
+
+            // working till here 
+            
+            users_profit_loss = casino_amount + sport_amount + third_party_amount
+
+            overall_casino_amount += casino_amount,
+                overall_sport_amount += sport_amount,
+                overall_third_party_amount += third_party_amount,
+                overall_profit_loss += users_profit_loss
+
+            return { ...user.toObject(), users_profit_loss, casino_amount, sport_amount, third_party_amount }
+        }))
+
+
 
 
         return res.status(200).json({
             success: true,
-            page,
-            limit,
-            total: totalBets,
-            totalPages: Math.ceil(totalBets / limit),
-            count: bets.length,
-            data: bets,
-            message: "All Bets fetched successfully",
+            data: {
+                all_users,
+                overall_casino_amount, overall_sport_amount, overall_third_party_amount, overall_profit_loss
+            },
+            message: "All Users Profit Loss fetched successfully"
         });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error" });

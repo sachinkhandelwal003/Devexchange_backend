@@ -15,7 +15,9 @@ import { DownloadAccountListPdf } from "../Controllers/adminControllers.js"
 import { adminAccountStatement } from "../Controllers/adminControllers.js"
 import { getAllBets } from "../Controllers/adminControllers.js"
 import { getProfitLossOfUsers } from "../Controllers/adminControllers.js"
-import {getUsersWinOrLoss} from "../Controllers/adminControllers.js"
+import { getUsersWinOrLoss } from "../Controllers/adminControllers.js"
+
+
 const router = express.Router();
 
 // router.get("/",(req,res)=>{console.log("request came on this ")})
