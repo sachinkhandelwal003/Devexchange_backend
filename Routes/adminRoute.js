@@ -16,7 +16,8 @@ import { adminAccountStatement } from "../Controllers/adminControllers.js"
 import { getAllBets } from "../Controllers/adminControllers.js"
 import { getProfitLossOfUsers } from "../Controllers/adminControllers.js"
 import { getUsersWinOrLoss } from "../Controllers/adminControllers.js"
-
+import { DownloadUsersWinLossPdf } from "../Controllers/adminControllers.js"
+import {DownloadUsersWinLossExcel} from "../Controllers/adminControllers.js"
 
 const router = express.Router();
 
@@ -47,5 +48,11 @@ router.get("/get-profit-loss-reports", verifyToken, verifyAdmin, getProfitLossOf
 
 // get user win losses
 router.get("/user-win-loss", verifyToken, verifyAdmin, getUsersWinOrLoss)
+
+// DownloadUsersWinLossPdf
+router.get("/user-win-loss-download-pdf", verifyToken, verifyAdmin, DownloadUsersWinLossPdf)
+
+
+router.get("/user-win-loss-download-csv", verifyToken, verifyAdmin, DownloadUsersWinLossExcel)
 
 export default router;

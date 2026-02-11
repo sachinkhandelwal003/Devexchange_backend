@@ -376,6 +376,262 @@ export const DownloadAccountListPdf = async (req, res) => {
 };
 
 
+export const DownloadUsersWinLossPdf = async (req, res) => {
+    try {
+        let from = req.query.from || "";
+        let to = req.query.to || "";
+        let search = req.query.search || "";
+
+        let userQuery = { account_type: "user" };
+
+        if (search) {
+            userQuery.client_name = new RegExp(`^${search}`, "i");
+        }
+
+        const allUsers = await user.find(userQuery);
+
+        let overall_casino_amount = 0;
+        let overall_sport_amount = 0;
+        let overall_third_party_amount = 0;
+        let overall_profit_loss = 0;
+
+        let usersData = [];
+
+        for (let u of allUsers) {
+
+            let betQuery = {
+                user_id: u._id,
+                bet_status: "settled"
+            };
+
+            if (from && to) {
+                let fromDate = new Date(from);
+                let toDate = new Date(to);
+                toDate.setHours(23, 59, 59, 999);
+
+                betQuery.createdAt = {
+                    $gte: fromDate,
+                    $lte: toDate
+                };
+            }
+
+            const bets = await Bet.find(betQuery);
+
+            let casino_amount = 0;
+            let sport_amount = 0;
+            let third_party_amount = 0;
+
+            bets.forEach((bet) => {
+                if (bet.bet_sub_type === "casino") {
+                    casino_amount += Number(bet.profit_loss);
+                } else if (bet.bet_sub_type === "sport") {
+                    sport_amount += Number(bet.profit_loss);
+                } else if (bet.bet_sub_type === "third_party") {
+                    third_party_amount += Number(bet.profit_loss);
+                }
+            });
+
+            let users_profit_loss =
+                casino_amount + sport_amount + third_party_amount;
+
+            overall_casino_amount += casino_amount;
+            overall_sport_amount += sport_amount;
+            overall_third_party_amount += third_party_amount;
+            overall_profit_loss += users_profit_loss;
+
+            usersData.push({
+                client_name: u.client_name,
+                casino_amount,
+                sport_amount,
+                third_party_amount,
+                users_profit_loss
+            });
+        }
+
+        // -------- PDF START --------
+
+        const doc = new PDFDocument({ margin: 30, size: "A4" });
+        const fileName = `users-win-loss-${Date.now()}.pdf`;
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=${fileName}`
+        );
+
+        doc.pipe(res);
+
+        doc.fontSize(18).text("Users Profit & Loss Report", { align: "center" });
+        doc.moveDown();
+
+        doc.fontSize(10).text(
+            "Client Name | Casino P/L | Sport P/L | Third Party P/L | Total P/L"
+        );
+        doc.moveDown(0.5);
+
+        if (!usersData.length) {
+            doc.text("No data found");
+        } else {
+            usersData.forEach((u) => {
+                doc.text(
+                    `${u.client_name} | ${u.casino_amount} | ${u.sport_amount} | ${u.third_party_amount} | ${u.users_profit_loss}`
+                );
+            });
+        }
+
+        doc.moveDown();
+        doc.moveDown();
+
+        doc.fontSize(12).text("Overall Totals", { underline: true });
+        doc.moveDown(0.5);
+
+        doc.fontSize(10).text(
+            `Casino: ${overall_casino_amount}`
+        );
+        doc.text(
+            `Sport: ${overall_sport_amount}`
+        );
+        doc.text(
+            `Third Party: ${overall_third_party_amount}`
+        );
+        doc.text(
+            `Final Profit/Loss: ${overall_profit_loss}`
+        );
+
+        doc.end();
+
+    } catch (error) {
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: "PDF generation failed",
+                error: error.message,
+            });
+        }
+    }
+};
+
+
+export const DownloadUsersWinLossExcel = async (req, res) => {
+    try {
+        let from = req.query.from || "";
+        let to = req.query.to || "";
+        let search = req.query.search || "";
+
+        let userQuery = { account_type: "user" };
+
+        if (search) {
+            userQuery.client_name = new RegExp(`^${search}`, "i");
+        }
+
+        const allUsers = await user.find(userQuery);
+
+        let overall_casino_amount = 0;
+        let overall_sport_amount = 0;
+        let overall_third_party_amount = 0;
+        let overall_profit_loss = 0;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Users Win Loss");
+
+        // Header Row
+        worksheet.columns = [
+            { header: "Client Name", key: "client_name", width: 20 },
+            { header: "Casino P/L", key: "casino_amount", width: 15 },
+            { header: "Sport P/L", key: "sport_amount", width: 15 },
+            { header: "Third Party P/L", key: "third_party_amount", width: 18 },
+            { header: "Total P/L", key: "users_profit_loss", width: 15 },
+        ];
+
+        for (let u of allUsers) {
+
+            let betQuery = {
+                user_id: u._id,
+                bet_status: "settled"
+            };
+
+            if (from && to) {
+                let fromDate = new Date(from);
+                let toDate = new Date(to);
+                toDate.setHours(23, 59, 59, 999);
+
+                betQuery.createdAt = {
+                    $gte: fromDate,
+                    $lte: toDate
+                };
+            }
+
+            const bets = await Bet.find(betQuery);
+
+            let casino_amount = 0;
+            let sport_amount = 0;
+            let third_party_amount = 0;
+
+            bets.forEach((bet) => {
+                if (bet.bet_sub_type === "casino") {
+                    casino_amount += Number(bet.profit_loss);
+                } else if (bet.bet_sub_type === "sport") {
+                    sport_amount += Number(bet.profit_loss);
+                } else if (bet.bet_sub_type === "third_party") {
+                    third_party_amount += Number(bet.profit_loss);
+                }
+            });
+
+            let users_profit_loss =
+                casino_amount + sport_amount + third_party_amount;
+
+            overall_casino_amount += casino_amount;
+            overall_sport_amount += sport_amount;
+            overall_third_party_amount += third_party_amount;
+            overall_profit_loss += users_profit_loss;
+
+            worksheet.addRow({
+                client_name: u.client_name,
+                casino_amount,
+                sport_amount,
+                third_party_amount,
+                users_profit_loss
+            });
+        }
+
+        // Add Empty Row
+        worksheet.addRow([]);
+
+        // Add Overall Totals
+        worksheet.addRow({
+            client_name: "OVERALL TOTAL",
+            casino_amount: overall_casino_amount,
+            sport_amount: overall_sport_amount,
+            third_party_amount: overall_third_party_amount,
+            users_profit_loss: overall_profit_loss
+        });
+
+        const fileName = `users-win-loss-${Date.now()}.xlsx`;
+
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=${fileName}`
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error) {
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: "Excel generation failed",
+                error: error.message,
+            });
+        }
+    }
+};
+
+
 export const DownloadAccountListExcel = async (req, res) => {
     try {
         const allUsers = await user
@@ -637,7 +893,7 @@ export const getUsersWinOrLoss = async (req, res) => {
         let query = { account_type: "user" };
 
         if (from != "" && to != "") {
-            query.createdAt = { 
+            query.createdAt = {
                 $gte: new Date(from),
                 $lte: new Date(to)
             }
@@ -653,7 +909,7 @@ export const getUsersWinOrLoss = async (req, res) => {
 
         let overall_casino_amount = 0;
         let overall_sport_amount = 0;
-        let overall_third_party_amount = 0; 
+        let overall_third_party_amount = 0;
         let overall_profit_loss = 0;
 
         all_users = await Promise.all(all_users.map(async (user) => {
@@ -666,19 +922,19 @@ export const getUsersWinOrLoss = async (req, res) => {
 
             //// profit_loss,bet_sub_type:casino,sport,third_party
             getAllbetsAmount.map((bet) => {
-                console.log("code came in this blockkkk",bet)
+                console.log("code came in this blockkkk", bet)
                 if (bet.bet_sub_type == "casino") {
                     casino_amount += Number(bet.profit_loss)
                 } else if (bet.bet_sub_type == "sport") {
                     sport_amount += Number(bet.profit_loss)
-                    console.log("sport_amount,sport_amount",sport_amount)
+                    console.log("sport_amount,sport_amount", sport_amount)
                 } else if (bet.bet_sub_type == "third_party") {
                     third_party_amount += Number(bet.profit_loss)
                 }
             })
 
             // working till here 
-            
+
             users_profit_loss = casino_amount + sport_amount + third_party_amount
 
             overall_casino_amount += casino_amount,
