@@ -637,8 +637,10 @@ export const getUsersWinOrLoss = async (req, res) => {
         let query = { account_type: "user" };
 
         if (from != "" && to != "") {
-            query.createdAt = { $gte: new Date(from) },
-                query.createdAt = { $lte: new Date(to) }
+            query.createdAt = { 
+                $gte: new Date(from),
+                $lte: new Date(to)
+            }
         }
 
         let search = req.query.search || "";
@@ -651,7 +653,7 @@ export const getUsersWinOrLoss = async (req, res) => {
 
         let overall_casino_amount = 0;
         let overall_sport_amount = 0;
-        let overall_third_party_amount = 0;
+        let overall_third_party_amount = 0; 
         let overall_profit_loss = 0;
 
         all_users = await Promise.all(all_users.map(async (user) => {
@@ -669,7 +671,7 @@ export const getUsersWinOrLoss = async (req, res) => {
                     casino_amount += Number(bet.profit_loss)
                 } else if (bet.bet_sub_type == "sport") {
                     sport_amount += Number(bet.profit_loss)
-                    console.log("casino_amountcasino_amount",sport_amount)
+                    console.log("sport_amount,sport_amount",sport_amount)
                 } else if (bet.bet_sub_type == "third_party") {
                     third_party_amount += Number(bet.profit_loss)
                 }
