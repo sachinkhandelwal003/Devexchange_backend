@@ -18,6 +18,7 @@ import { getProfitLossOfUsers } from "../Controllers/adminControllers.js"
 import { getUsersWinOrLoss } from "../Controllers/adminControllers.js"
 import { DownloadUsersWinLossPdf } from "../Controllers/adminControllers.js"
 import {DownloadUsersWinLossExcel} from "../Controllers/adminControllers.js"
+import {GetMatchAnalysis} from "../Controllers/adminControllers.js"
 
 const router = express.Router();
 
@@ -52,7 +53,10 @@ router.get("/user-win-loss", verifyToken, verifyAdmin, getUsersWinOrLoss)
 // DownloadUsersWinLossPdf
 router.get("/user-win-loss-download-pdf", verifyToken, verifyAdmin, DownloadUsersWinLossPdf)
 
+router.get("/user-win-loss-download-csv", verifyToken, verifyAdmin, DownloadUsersWinLossExcel)
 
 router.get("/user-win-loss-download-csv", verifyToken, verifyAdmin, DownloadUsersWinLossExcel)
+
+router.get("/match-analysis", verifyToken, verifyAdmin, GetMatchAnalysis)
 
 export default router;

@@ -1007,17 +1007,35 @@ export const getGeneralReport = async (req, res) => {
 };
 
 
+export const GetMatchAnalysis = async (req, res) => {
+    try {
 
+        let query = {
+            result: "pending"
+        }
 
+        let bets = await Bet.find(query);
 
+        let match_map = new Map() // here we will 
+        bets.map((bet) => {
+            if(!match_map.has(bet.event_name)){
+                match_map.set(bet.event_name,[])
+            }
 
+            match_map.get(bet.event_name).push(bet);
+        })
 
+        let grouped_data = Object.fromEntries(match_map);
 
-
-
-
-
-
+        return res.status(200).json({
+            success: true,
+            data: grouped_data,
+            message: "Data fetched successfully ",
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
 
 
 
