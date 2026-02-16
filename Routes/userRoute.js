@@ -13,7 +13,7 @@ import {
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
-import {verifyUser} from "../utils/VerifyUser.js";
+import {verifyUser} from "../utils/verifyUser.js";
 import { MakeBet } from "../Controllers/userController.js"
 
 const router = express.Router();
