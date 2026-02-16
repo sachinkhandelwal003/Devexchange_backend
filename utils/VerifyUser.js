@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import user from "../models/user.js";
 
-const verifyUser = async (req, res, next) => {
+export const  verifyUser = async (req, res, next) => {
     try {
         // 1. Get token from header
 
@@ -27,4 +27,4 @@ const verifyUser = async (req, res, next) => {
 };
 
 
-export default verifyUser;
+
