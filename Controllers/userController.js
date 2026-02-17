@@ -118,6 +118,15 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ client_name });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+
+
+ if (user.account_type === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res
