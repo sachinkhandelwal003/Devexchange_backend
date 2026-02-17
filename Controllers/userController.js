@@ -180,7 +180,7 @@ console.log("useruser",user)
 };
 
 
-// --- 3. ADMIN LOGIN ---
+// --- 3. ADMIN LOGIN   sfdgsdfg---
 export const loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
