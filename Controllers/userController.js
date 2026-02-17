@@ -150,13 +150,14 @@ export const loginUser = async (req, res) => {
 
 export const demoLogin = async (req, res) => {
   try {
-    const user = await User.findOne({ is_demo: true });
+const user = await User.findOne({ is_demo: { $in: [true, "true"] } });
+console.log("useruser",user)
 
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "Demo user not found",
-      });
+      }); 
     }
 
     const token = jwt.sign(
