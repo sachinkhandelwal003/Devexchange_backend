@@ -9,12 +9,13 @@ import {
   loginAdmin,  // Imported
   AdminChangePassword,
   getAllAccountStatements,
-  getProfile
+  getProfile,demoLogin
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
 import { verifyUser } from "../utils/verifyUsers.js";
 import { MakeBet } from "../Controllers/userController.js"
+
 
 const router = express.Router();
 // dsgsgsdgsdg
@@ -22,6 +23,8 @@ const router = express.Router();
 
 // User Login -> http://localhost:3000/api/users/login
 router.post("/user-login", loginUser);
+router.post("/demo-login", demoLogin);
+
 // router.post("/user-forgot-password", forgotPassword);
 
 // Admin Login -> http://localhost:3000/api/users/admin-login

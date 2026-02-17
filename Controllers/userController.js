@@ -147,6 +147,37 @@ export const loginUser = async (req, res) => {
   }
 };
 
+
+export const demoLogin = async (req, res) => {
+  try {
+    const user = await User.findOne({ is_demo: true });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Demo user not found",
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.account_type, demo: true },
+      process.env.JWT_SECRET || "secret",
+      { expiresIn: "1d" } // short expiry for demo
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Demo login successful",
+      token,
+      data: user,
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
 // --- 3. ADMIN LOGIN ---
 export const loginAdmin = async (req, res) => {
   try {
