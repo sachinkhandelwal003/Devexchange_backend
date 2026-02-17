@@ -36,7 +36,10 @@ mongoose
     });
 
     // 🔥 FRONTEND WEBSOCKET SERVER
-    const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ 
+  server,
+  path: '/ws'  // Add this line
+});
 
     wss.on("connection", (ws) => {
       console.log("🟢 Frontend Connected");
