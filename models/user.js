@@ -74,7 +74,8 @@ const userSchema = new mongoose.Schema(
     },
     is_demo: {
   type: Boolean,
-  default: false
+  default: false,required: false
+
 },
 
     can_bet: {

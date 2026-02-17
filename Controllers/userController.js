@@ -34,6 +34,7 @@ export const createUser = async (req, res) => {
       ...req.body,
       password: hashedPassword,
       transaction_password: hashedTransactionPassword,
+      is_demo:false
     });
 
 
