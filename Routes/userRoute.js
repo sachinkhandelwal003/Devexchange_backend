@@ -9,7 +9,7 @@ import {
   loginAdmin,  // Imported
   AdminChangePassword,
   getAllAccountStatements,
-  getProfile,demoLogin
+  getProfile,demoLogin,toggleUserStatus
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
@@ -50,6 +50,7 @@ router.put("/:id", updateUser);
 
 // Delete user
 router.delete("/delete-user/:id", deleteUser);
+router.put("/toggle/:id", toggleUserStatus);
 
 router.post("/make-bet", verifyToken, verifyUser, MakeBet)
 export default router;

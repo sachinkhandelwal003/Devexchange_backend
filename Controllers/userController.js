@@ -128,6 +128,12 @@ export const loginUser = async (req, res) => {
       });
     }
 
+     if (!user.can_bet) { // <-- assuming your schema has isActive: true/false
+      return res.status(403).json({
+        success: false,
+        message: "Your account is deactivated",
+      });
+    }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res
@@ -437,6 +443,52 @@ export const deleteUser = async (req, res) => {
       success: false,
       message: "Delete failed",
       error: error.message
+    });
+  }
+};
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Optional: prevent deactivating if balance or credit exists
+    if (user.is_active && (user.current_balance !== 0 || user.credit_ref > 0)) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot deactivate user with balance or credit",
+      });
+    }
+
+    // Toggle active status
+    user.is_active = !user.is_active;
+
+    // Also control betting ability based on active status
+    user.can_bet = user.is_active;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: `User has been ${user.is_active ? "activated" : "deactivated"} successfully`,
+      data: {
+        is_active: user.is_active,
+        can_bet: user.can_bet,
+      },
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Operation failed",
+      error: error.message,
     });
   }
 };
