@@ -35,11 +35,13 @@ mongoose
       console.log(`🚀 Server running on port ${PORT}`);
     });
 
-    // 🔥 FRONTEND WEBSOCKET SERVER
-const wss = new WebSocketServer({ 
-  server,
-  path: '/ws'  // Add this line
-});
+    /* ==============================
+       🔥 FRONTEND WEBSOCKET SERVER
+    =============================== */
+    const wss = new WebSocketServer({
+      server,
+      path: "/ws",
+    });
 
     wss.on("connection", (ws) => {
       console.log("🟢 Frontend Connected");
@@ -49,34 +51,76 @@ const wss = new WebSocketServer({
       });
     });
 
-    // 🔥 ENTITYSPORT WEBSOCKET CONNECTION
-    const entitySocket = new WebSocket(
-      `ws://webhook.entitysport.com:8087/connect?token=${ENTITY_TOKEN}`
-    );
+    /* ==============================
+       🔥 ENTITYSPORT CONNECTION
+    =============================== */
 
-    entitySocket.on("open", () => {
-      console.log("✅ Connected to EntitySport");
-    });
+    let entitySocket;
+    let messageBuffer = [];
 
-    entitySocket.on("message", (data) => {
-      const message = data.toString();
-      console.log("📩 Entity Data:", message);
+    function connectEntitySocket() {
+      console.log("🔄 Connecting to EntitySport...");
 
-      // Broadcast to all frontend clients
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
+      entitySocket = new WebSocket(
+        `ws://webhook.entitysport.com:8087/connect?token=${ENTITY_TOKEN}`
+      );
+
+      entitySocket.on("open", () => {
+        console.log("✅ Connected to EntitySport");
+      });
+
+      entitySocket.on("message", (data) => {
+        try {
+          const parsed = JSON.parse(data.toString());
+
+          // 🚫 Ignore non-data packets
+          if (!parsed.api_type) return;
+
+          // 🎯 Only allow important message types
+          if (
+            parsed.api_type === "match_push_obj" ||
+            parsed.api_type === "odds_update"
+          ) {
+            messageBuffer.push(parsed);
+          }
+
+        } catch (err) {
+          console.log("Parse Error:", err.message);
         }
       });
-    });
 
-    entitySocket.on("close", () => {
-      console.log("❌ EntitySport Connection Closed");
-    });
+      entitySocket.on("close", () => {
+        console.log("❌ EntitySport Disconnected. Reconnecting in 5 seconds...");
+        setTimeout(connectEntitySocket, 5000); // Auto reconnect
+      });
 
-    entitySocket.on("error", (err) => {
-      console.log("🔥 EntitySport Error:", err.message);
-    });
+      entitySocket.on("error", (err) => {
+        console.log("🔥 EntitySport Error:", err.message);
+      });
+    }
+
+    // Start first connection
+    connectEntitySocket();
+
+    /* ==============================
+       🔥 SEND TO FRONTEND EVERY 1 SEC
+    =============================== */
+
+    setInterval(() => {
+      if (messageBuffer.length === 0) return;
+
+      const batch = [...messageBuffer];
+      messageBuffer = [];
+
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(batch));
+        }
+      });
+
+      console.log("📤 Sent batch to frontend:", batch.length);
+
+    }, 200);
   })
   .catch((error) => {
     console.error("MongoDB Connection Error:", error);

@@ -394,16 +394,53 @@ export const updateUser = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    res.json({ success: true, message: "User deleted" });
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // 1️⃣ Check if user has balance
+    if (user.current_balance !== 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete user with remaining balance"
+      });
+    }
+
+    // 2️⃣ Check if user has credit reference
+    if (user.credit_ref > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Clear credit reference before deleting user"
+      });
+    }
+
+    // 3️⃣ Soft delete (recommended)
+    user.is_active = false;
+    user.can_bet = false;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "User deactivated successfully"
+    });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: "Delete failed" });
+    return res.status(500).json({
+      success: false,
+      message: "Delete failed",
+      error: error.message
+    });
   }
 };
+
 
 
 export const MakeBet = async (req, res) => {

@@ -49,7 +49,7 @@ router.get("/:id", getUserById);
 router.put("/:id", updateUser);
 
 // Delete user
-router.delete("/:id", deleteUser);
+router.delete("/delete-user/:id", deleteUser);
 
 router.post("/make-bet", verifyToken, verifyUser, MakeBet)
 export default router;
