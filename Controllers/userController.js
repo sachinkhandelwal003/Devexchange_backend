@@ -1,4 +1,6 @@
 import User from "../models/user.js";
+import mongoose from "mongoose";
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import AccountStatement from "../models/accountStatement.js";
@@ -496,41 +498,251 @@ export const toggleUserStatus = async (req, res) => {
 
 
 export const MakeBet = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    console.log("bodyyyyyyyyyyyyyyyyyyyy", req.body)
-    let user = await User.findById(req.body.user_id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+    const {
+      user_id,
+      event_id,
+      market_id,
+      selection_id,
+      selection_name,
+      bet_type,
+      odds,
+      stake
+    } = req.body;
+
+    // ===== BASIC VALIDATION =====
+    if (!user_id || !bet_type || !odds || !stake) {
+      throw new Error("Missing required fields");
     }
+
+    if (stake <= 0 || odds <= 1) {
+      throw new Error("Invalid stake or odds");
+    }
+
+    if (!["back", "lay"].includes(bet_type)) {
+      throw new Error("Invalid bet type");
+    }
+
+    // ===== GET USER =====
+    const user = await User.findById(user_id).session(session);
+
+    if (!user) throw new Error("User not found");
 
     if (!user.is_active || !user.can_bet) {
-      return res.status(403).json({
-        success: false,
-        message: "User is not allowed to bet"
-      });
+      throw new Error("User not allowed to bet");
     }
 
+    // ===== PROTECT NEGATIVE EXPOSURE =====
+    if (user.used_exposure < 0) {
+      user.used_exposure = 0;
+    }
+
+    // ===== CALCULATE LIABILITY =====
     let liability = 0;
 
-    if (req.body.bet_type == "back") {
-      liability = req.body.stake;
+    if (bet_type === "back") {
+      liability = stake;
+    } else {
+      liability = (odds - 1) * stake;
     }
 
-    if (req.body.bet_type == "lay") {
-      liability = (req.body.odds - 1) * req.body.stake;
+    // ===== CALCULATE NEW EXPOSURE =====
+    const oldExposure = user.used_exposure;
+    const newExposure = oldExposure + liability;
+
+    if (newExposure > user.exposure_limit) {
+      throw new Error("Exposure limit exceeded");
     }
 
-    if (req.body.liability > user.exposure_limit) {
-      return res.status(400).json({
-        success: false,
-        message: "Exposure limit exceeded"
-      });
-    }
+    // ===== FREEZE EXPOSURE =====
+    user.used_exposure = newExposure;
+    user.available_balance = user.current_balance - newExposure;
 
-    const bet = await Bet.create({ ...req.body, liability });
+    await user.save({ session });
 
-    res.json({ success: true, message: "Bet Created successfully", data: bet });
+    // ===== DEBUG (NOW CORRECT) =====
+    console.log("===== PLACE BET DEBUG =====");
+    console.log("User Balance:", user.current_balance);
+    console.log("Used Exposure Before:", oldExposure);
+    console.log("Liability:", liability);
+    console.log("New Exposure:", newExposure);
+    console.log("Exposure Limit:", user.exposure_limit);
+
+    // ===== CREATE BET =====
+    const bet = await Bet.create([{
+      user_id,
+      event_id,
+      market_id,
+      selection_id,
+      selection_name,
+      bet_type,
+      odds,
+      stake,
+      liability,
+      profit_loss: 0,
+      result: "pending",
+      bet_status: "matched",
+      placed_at: new Date()
+    }], { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.json({
+      success: true,
+      message: "Bet placed successfully",
+      bet: bet[0],
+      exposure: {
+        used_exposure: user.used_exposure,
+        available_balance: user.available_balance
+      }
+    });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error while making bet", error });
+    await session.abortTransaction();
+    session.endSession();
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
   }
 };
+
+
+
+
+export const settleMarket = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { event_id, winner_selection_id } = req.body;
+
+    if (!event_id || !winner_selection_id) {
+      throw new Error("Event ID and winner selection required");
+    }
+
+    // ===== GET ALL MATCHED BETS =====
+    const bets = await Bet.find({
+      event_id,
+      bet_status: "matched"
+    }).session(session);
+
+    if (!bets.length) {
+      throw new Error("No matched bets found");
+    }
+
+    for (let bet of bets) {
+
+      let profit = 0;
+
+      // ===============================
+      // 1️⃣ CALCULATE PROFIT / LOSS
+      // ===============================
+
+      if (bet.bet_type === "back") {
+
+        if (bet.selection_id === winner_selection_id) {
+          profit = (bet.odds - 1) * bet.stake;
+        } else {
+          profit = -bet.stake;
+        }
+
+      } else { // LAY BET
+
+        if (bet.selection_id === winner_selection_id) {
+          profit = -bet.liability;
+        } else {
+          profit = bet.stake;
+        }
+      }
+
+      // ===============================
+      // 2️⃣ UPDATE BET RECORD
+      // ===============================
+
+      bet.profit_loss = profit;
+      bet.bet_status = "settled";
+      bet.settled_at = new Date();
+
+      if (profit > 0) bet.result = "win";
+      else if (profit < 0) bet.result = "loss";
+      else bet.result = "void";
+
+      await bet.save({ session });
+
+      // ===============================
+      // 3️⃣ UPDATE USER BALANCE
+      // ===============================
+
+      const user = await User.findById(bet.user_id).session(session);
+
+      if (!user) continue;
+
+      // Protect negative exposure
+      if (user.used_exposure < 0) {
+        user.used_exposure = 0;
+      }
+
+      const oldExposure = user.used_exposure;
+      const oldBalance = user.current_balance;
+
+      // 🔓 Release exposure
+      user.used_exposure = Math.max(
+        0,
+        user.used_exposure - bet.liability
+      );
+
+      // 💰 Apply profit/loss to real wallet
+      user.current_balance += profit;
+
+      // 🧮 Recalculate available balance
+      user.available_balance =
+        user.current_balance - user.used_exposure;
+
+      await user.save({ session });
+
+      // ===============================
+      // DEBUG LOG
+      // ===============================
+
+      console.log("===== SETTLEMENT DEBUG =====");
+      console.log("Bet ID:", bet._id);
+      console.log("Bet Type:", bet.bet_type);
+      console.log("Stake:", bet.stake);
+      console.log("Odds:", bet.odds);
+      console.log("Liability:", bet.liability);
+      console.log("Profit:", profit);
+      console.log("Old Exposure:", oldExposure);
+      console.log("New Exposure:", user.used_exposure);
+      console.log("Old Balance:", oldBalance);
+      console.log("New Balance:", user.current_balance);
+      console.log("================================");
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.json({
+      success: true,
+      message: "Market settled successfully"
+    });
+
+  } catch (error) {
+
+    await session.abortTransaction();
+    session.endSession();
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+

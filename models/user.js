@@ -77,7 +77,16 @@ const userSchema = new mongoose.Schema(
   default: false,required: false
 
 },
+available_balance: {
+  type: Number,
+  default: 0
+},
 
+used_exposure: {
+  type: Number,
+  default: 0
+}
+,
     can_bet: {
       type: Boolean,
       default: false,

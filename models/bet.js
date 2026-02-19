@@ -60,7 +60,7 @@ const BetSchema = new mongoose.Schema(
         bet_type: {
             type: String,
             enum: ["back", "lay"],
-            required: false,
+            required: true,
             index: true,
         },
 
@@ -73,18 +73,18 @@ const BetSchema = new mongoose.Schema(
 
         odds: {
             type: Number, // U Rate
-            required: false,
+            required: true,
         },
 
         stake: {
             type: Number,
-            required: false,
+            required: true,
         },
 
         // 🔹 Calculated exposure
         liability: {
             type: Number, // very important for lay
-            required: false,
+            required: true,
         },
 
         // 🔹 Bet status (for Current Bets screen)

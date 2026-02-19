@@ -9,7 +9,7 @@ import {
   loginAdmin,  // Imported
   AdminChangePassword,
   getAllAccountStatements,
-  getProfile,demoLogin,toggleUserStatus
+  getProfile,demoLogin,toggleUserStatus,settleMarket
 } from "../Controllers/userController.js";
 import { verifyToken } from "../utils/VerifyToken.js";
 import { verifyAdmin } from "../utils/verifyAdmin.js";
@@ -53,4 +53,6 @@ router.delete("/delete-user/:id", deleteUser);
 router.put("/toggle/:id", toggleUserStatus);
 
 router.post("/make-bet", verifyToken, verifyUser, MakeBet)
+router.post("/settle-bet", verifyToken, verifyUser, settleMarket)
+
 export default router;
