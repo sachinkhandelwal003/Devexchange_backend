@@ -8,56 +8,123 @@ import AccountStatementCategory from "../models/accountStatementCategories.js";
 import Bet from "../models/bet.js";
 
 // --- 1. REGISTER USER (Create) ---
+// --- CREATE USER ---
 export const createUser = async (req, res) => {
   try {
-    const token_user = req.user;
+    const tokenUser = req.user; // From JWT middleware
 
-    console.log("token userrrrrrrrrrrrrrr", token_user);
-    const { client_name, password ,created_by_id } = req.body;
-
-    const userNameExists = await User.findOne({ client_name });
-    if (userNameExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Username already exists" });
+    if (!tokenUser) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
-    // Hash Password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+    // 🔒 Only admin, agent, admin_staff can create accounts
+    if (!["admin", "agent", "admin_staff"].includes(tokenUser.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
 
-    const hashedTransactionPassword = await bcrypt.hash(
-      req.body.transaction_password,
-      salt,
+    const {
+      client_name,
+      password,
+      transaction_password,
+      account_type,
+      full_name,
+      city,
+      phone_number,
+      credit_ref,
+      comission_setting_upline,
+      comission_setting_downline,
+      comission_setting_our,
+      partnership_upline,
+      partnership_downline,
+      partnership_our,
+    } = req.body;
+
+    if (!client_name || !password || !transaction_password) {
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing",
+      });
+    }
+
+    // 🔒 Username check
+    const existingUser = await User.findOne({ client_name });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Username already exists",
+      });
+    }
+
+    // 🔒 Agent can only create USER
+    let finalAccountType = account_type;
+
+    if (tokenUser.role === "agent") {
+      finalAccountType = "user";
+    }
+
+    // 🔐 Hash passwords
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedTxnPassword = await bcrypt.hash(
+      transaction_password,
+      salt
     );
 
-    // Create
-    const user = await User.create({
-      ...req.body,
+    // ✅ Create User (NO ...req.body spreading)
+    const newUser = await User.create({
+      client_name,
       password: hashedPassword,
-      created_by_id,
-      transaction_password: hashedTransactionPassword,
-      is_demo:false
+      transaction_password: hashedTxnPassword,
+      full_name,
+      city,
+      phone_number,
+      account_type: finalAccountType,
+      credit_ref: Number(credit_ref) || 0,
+      comission_setting_upline: Number(comission_setting_upline) || 0,
+      comission_setting_downline: Number(comission_setting_downline) || 0,
+      comission_setting_our: Number(comission_setting_our) || 0,
+      partnership_upline: Number(partnership_upline) || 0,
+      partnership_downline: Number(partnership_downline) || 0,
+      partnership_our: Number(partnership_our) || 0,
+
+      // 🔥 IMPORTANT: creator from token
+      created_by_id: tokenUser.id,
+
+      is_active: true,
+      is_demo: false,
+      current_balance: 0,
+      available_balance: 0,
+      used_exposure: 0,
     });
 
-
+    // 🧾 Opening Account Statement
     await AccountStatement.create({
-      customer_id: user._id, credit: 0, debit: 0, pts: 0, type: ["6985c831789580a168ceb1d7", "6985c8d637e25286b31c7594", "6985c8d737e25286b31c7596", "6985cd4c42279fc87eca0e7a"], remark: "Opening Pts"
-    })
-
-    await AccountStatement.create({
-      customer_id: user._id, credit: 1500, debit: 0, type: ["6985c831789580a168ceb1d7"], pts: 1500, remark: "User creation"
-    })
+      customer_id: newUser._id,
+      credit: 0,
+      debit: 0,
+      pts: 0,
+      remark: "Opening Balance",
+      type: [],
+    });
 
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      data: user,
+      data: newUser,
     });
+
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
   }
 };
 
@@ -267,15 +334,39 @@ export const AdminChangePassword = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
+    const tokenUser = req.user; // From JWT middleware
+
+    if (!tokenUser) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    // ❌ Normal users cannot access
+    if (!["admin", "agent", "admin_staff"].includes(tokenUser.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
     let limit = Number(req.query.limit) || 10;
     let page = Number(req.query.page) || 1;
     let skip = (page - 1) * limit;
 
     let query = { account_type: { $ne: "admin" } };
 
+    // 🔥 ROLE BASED FILTER
+    if (tokenUser.role === "agent") {
+      // Agent sees only their created users
+      query.created_by_id = tokenUser.id;
+    }
+
+    // 🔎 Search Filter
     let search = req.query.search || "";
 
-    if (search != "") {
+    if (search !== "") {
       query.$or = [
         { client_name: { $regex: search, $options: "i" } },
         { full_name: { $regex: search, $options: "i" } },
@@ -284,13 +375,11 @@ export const getAllUsers = async (req, res) => {
 
     const totalUsers = await User.countDocuments(query);
 
-    // { accountType: { $ne: "admin" } } -> Iska matlab "Not Equal to Admin"
     const users = await User.find(query)
-      .sort({
-        createdAt: -1,
-      })
+      .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate("created_by_id", "client_name account_type"); // Optional
 
     res.json({
       success: true,
@@ -300,10 +389,14 @@ export const getAllUsers = async (req, res) => {
       totalPages: Math.ceil(totalUsers / limit),
       count: users.length,
       data: users,
-      message: "All users fetched successfully",
+      message: "Users fetched successfully",
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
@@ -572,7 +665,14 @@ export const MakeBet = async (req, res) => {
     user.available_balance = user.current_balance - newExposure;
 
     await user.save({ session });
-
+await AccountStatement.create([{
+  customer_id: user._id,
+  credit: 0,
+  debit: 0,
+  pts: -liability,
+  remark: `Exposure freeze for ${selection_name}`,
+  type: []
+}], { session });
     // ===== DEBUG (NOW CORRECT) =====
     console.log("===== PLACE BET DEBUG =====");
     console.log("User Balance:", user.current_balance);
@@ -643,7 +743,7 @@ export const settleMarket = async (req, res) => {
     }).session(session);
 
     if (!bets.length) {
-      throw new Error("No matched bets found");
+      throw new Error("No matched bets found or market already settled");
     }
 
     for (let bet of bets) {
@@ -655,15 +755,12 @@ export const settleMarket = async (req, res) => {
       // ===============================
 
       if (bet.bet_type === "back") {
-
         if (bet.selection_id === winner_selection_id) {
           profit = (bet.odds - 1) * bet.stake;
         } else {
           profit = -bet.stake;
         }
-
-      } else { // LAY BET
-
+      } else {
         if (bet.selection_id === winner_selection_id) {
           profit = -bet.liability;
         } else {
@@ -678,37 +775,26 @@ export const settleMarket = async (req, res) => {
       bet.profit_loss = profit;
       bet.bet_status = "settled";
       bet.settled_at = new Date();
-
-      if (profit > 0) bet.result = "win";
-      else if (profit < 0) bet.result = "loss";
-      else bet.result = "void";
+      bet.result = profit > 0 ? "win" : profit < 0 ? "loss" : "void";
 
       await bet.save({ session });
 
       // ===============================
-      // 3️⃣ UPDATE USER BALANCE
+      // 3️⃣ UPDATE USER WALLET
       // ===============================
 
       const user = await User.findById(bet.user_id).session(session);
 
       if (!user) continue;
 
-      // Protect negative exposure
-      if (user.used_exposure < 0) {
-        user.used_exposure = 0;
-      }
-
-      const oldExposure = user.used_exposure;
-      const oldBalance = user.current_balance;
+      const oldExposure = user.used_exposure || 0;
+      const oldBalance = user.current_balance || 0;
 
       // 🔓 Release exposure
-      user.used_exposure = Math.max(
-        0,
-        user.used_exposure - bet.liability
-      );
+      user.used_exposure = Math.max(0, oldExposure - bet.liability);
 
-      // 💰 Apply profit/loss to real wallet
-      user.current_balance += profit;
+      // 💰 Apply profit/loss
+      user.current_balance = oldBalance + profit;
 
       // 🧮 Recalculate available balance
       user.available_balance =
@@ -717,15 +803,24 @@ export const settleMarket = async (req, res) => {
       await user.save({ session });
 
       // ===============================
+      // 4️⃣ LEDGER ENTRY (SETTLEMENT)
+      // ===============================
+
+      await AccountStatement.create([{
+        customer_id: user._id,
+        credit: profit > 0 ? profit : 0,
+        debit: profit < 0 ? Math.abs(profit) : 0,
+        pts: profit,
+        remark: `Bet settlement for event ${event_id}`,
+        type: []
+      }], { session });
+
+      // ===============================
       // DEBUG LOG
       // ===============================
 
       console.log("===== SETTLEMENT DEBUG =====");
       console.log("Bet ID:", bet._id);
-      console.log("Bet Type:", bet.bet_type);
-      console.log("Stake:", bet.stake);
-      console.log("Odds:", bet.odds);
-      console.log("Liability:", bet.liability);
       console.log("Profit:", profit);
       console.log("Old Exposure:", oldExposure);
       console.log("New Exposure:", user.used_exposure);
@@ -737,9 +832,10 @@ export const settleMarket = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: "Market settled successfully"
+      message: "Market settled successfully",
+      total_bets_settled: bets.length
     });
 
   } catch (error) {
@@ -747,7 +843,9 @@ export const settleMarket = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
 
-    return res.status(500).json({
+    console.error("SETTLEMENT ERROR:", error.message);
+
+    return res.status(400).json({
       success: false,
       message: error.message
     });

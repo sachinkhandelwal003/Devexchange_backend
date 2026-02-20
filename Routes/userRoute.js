@@ -36,7 +36,7 @@ router.post("/admin-change-password", verifyToken, verifyAdmin, AdminChangePassw
 router.post("/create-user", verifyToken, createUser);
 
 // Get all users
-router.get("/get-all-users", verifyToken, verifyAdmin, getAllUsers);
+router.get("/get-all-users", verifyToken, getAllUsers);
 
 router.get("/get-all-account-statements", verifyToken, verifyUser, getAllAccountStatements);
 

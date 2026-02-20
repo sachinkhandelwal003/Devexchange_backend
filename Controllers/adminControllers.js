@@ -780,99 +780,159 @@ export const changeUserStatus = async (req, res) => {
 
 
 export const getAllBets = async (req, res) => {
-    try {
-        console.log("requesttttttttt ")
-        let page = req.query.page ? Number(req.query.page) : 1;
-        let limit = req.query.limit ? Number(req.query.limit) : 10;
-        let skip = (page - 1) * limit;
-        let filter = req.query.filter || "matched";
-        let back_lay = req.query.back_lay || "all"; // back, lay , all
-
-        let query = {};
-
-        if (filter != "") {
-            query.bet_status = filter
-        }
-
-        if (back_lay != "all") {
-            query.bet_type = back_lay
-        }
-
-        let search = req.query.search || "";
-        if (search != "") {
-            query.$or = [
-                { user_name: { $regex: search, $options: "i" } },
-                { event_name: { $regex: search, $options: "i" } }
-            ]
-        }
-
-let bets = await Bet.find(query)
-  .populate({
-    path: "user_id",
-    select: "client_name full_name current_balance available_balance exposure_limit account_type"
-  })
-  .skip(skip)
-  .limit(limit)
-  .sort({ createdAt: -1 });
-
-        const totalBets = await Bet.countDocuments(query);
-
-        let total_stake_amount = 0;
-        let total_amount = 0;
-        bets.map((bet) => {
-            total_stake_amount += Number(bet.stake)
-            total_amount += Number(bet.liability)
-        })
-
-        return res.status(200).json({
-            success: true,
-            page,
-            limit,
-            total: totalBets,
-            totalPages: Math.ceil(totalBets / limit),
-            count: bets.length,
-            data: bets,
-            total_stake_amount,
-            total_amount,
-            message: "All Bets fetched successfully",
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error" });
-    }
-};
-export const getSingleBet = async (req, res) => {
   try {
-    const { id } = req.params;
+    const tokenUser = req.user;
 
-    if (!id) {
-      return res.status(400).json({
+    if (!tokenUser) {
+      return res.status(401).json({
         success: false,
-        message: "Bet ID is required",
+        message: "Unauthorized"
       });
     }
 
-    const bet = await Bet.findById(id)
+    let page = req.query.page ? Number(req.query.page) : 1;
+    let limit = req.query.limit ? Number(req.query.limit) : 10;
+    let skip = (page - 1) * limit;
+
+    let filter = req.query.filter || "matched";
+    let back_lay = req.query.back_lay || "all";
+    let search = req.query.search || "";
+
+    let query = {};
+
+    // ===== ROLE BASED FILTER =====
+
+    if (tokenUser.role === "user") {
+      query.user_id = tokenUser.id;
+    }
+
+    if (tokenUser.role === "agent") {
+      // Get all users created by this agent
+      const users = await user.find({
+        created_by_id: tokenUser.id
+      }).select("_id");
+
+      const userIds = users.map(u => u._id);
+
+      query.user_id = { $in: userIds };
+    }
+
+    // Admin sees all → no filter
+
+    // ===== STATUS FILTER =====
+
+    if (filter) {
+      query.bet_status = filter;
+    }
+
+    if (back_lay !== "all") {
+      query.bet_type = back_lay;
+    }
+
+    if (search) {
+      query.$or = [
+        { user_name: { $regex: search, $options: "i" } },
+        { event_name: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const bets = await Bet.find(query)
       .populate({
-        path: "user_id"
-      });
+        path: "user_id",
+        select: "client_name full_name account_type"
+      })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
 
-    if (!bet) {
-      return res.status(404).json({
-        success: false,
-        message: "Bet not found",
-      });
-    }
+    const totalBets = await Bet.countDocuments(query);
+
+    let total_stake_amount = 0;
+    let total_liability_amount = 0;
+
+    bets.forEach((bet) => {
+      total_stake_amount += Number(bet.stake);
+      total_liability_amount += Number(bet.liability);
+    });
 
     return res.status(200).json({
       success: true,
-      data: bet,
-      message: "Single bet fetched successfully",
+      page,
+      limit,
+      total: totalBets,
+      totalPages: Math.ceil(totalBets / limit),
+      count: bets.length,
+      data: bets,
+      totals: {
+        total_stake_amount,
+        total_liability_amount
+      }
     });
 
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message
+    });
+  }
+};
+export const getSingleBet = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tokenUser = req.user;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Bet ID is required"
+      });
+    }
+
+    const bet = await Bet.findById(id)
+      .populate("user_id", "client_name full_name account_type");
+
+    if (!bet) {
+      return res.status(404).json({
+        success: false,
+        message: "Bet not found"
+      });
+    }
+
+    // ===== ROLE CHECK =====
+
+    if (tokenUser.role === "user" &&
+        bet.user_id._id.toString() !== tokenUser.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+
+    if (tokenUser.role === "agent") {
+      const user = await user.findOne({
+        _id: bet.user_id._id,
+        created_by_id: tokenUser.id
+      });
+
+      if (!user) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied"
+        });
+      }
+    }
+
+    // Admin allowed
+
+    return res.status(200).json({
+      success: true,
+      data: bet
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };

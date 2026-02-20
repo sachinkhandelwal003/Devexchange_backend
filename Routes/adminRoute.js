@@ -44,8 +44,8 @@ router.get("/download-account-list-excel", verifyToken, verifyAdmin, DownloadAcc
 // get admin account statement
 router.get("/admin-account-statement", verifyToken, verifyAdmin, adminAccountStatement)
 
-router.get("/get-all-bets", verifyToken, verifyAdmin, getAllBets);
-router.get("/get-bet/:id", verifyToken, verifyAdmin, getSingleBet);
+router.get("/get-all-bets", verifyToken, getAllBets);
+router.get("/get-bet/:id", verifyToken, getSingleBet);
 
 // profit loss reports of user
 router.get("/get-profit-loss-reports", verifyToken, verifyAdmin, getProfitLossOfUsers);
