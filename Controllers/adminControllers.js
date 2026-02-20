@@ -25,6 +25,7 @@ export const getAdminAndUserCurrentBalance = async (req, res) => {
     }
 }
 
+
 export const getExposureLimit = async (req, res) => {
     try {
         let { user_id } = req.query;
@@ -805,14 +806,21 @@ export const getAllBets = async (req, res) => {
             ]
         }
 
-        let bets = await Bet.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
+let bets = await Bet.find(query)
+  .populate({
+    path: "user_id",
+    select: "client_name full_name current_balance available_balance exposure_limit account_type"
+  })
+  .skip(skip)
+  .limit(limit)
+  .sort({ createdAt: -1 });
 
         const totalBets = await Bet.countDocuments(query);
 
-        let total_soda_amount = 0;
+        let total_stake_amount = 0;
         let total_amount = 0;
         bets.map((bet) => {
-            total_soda_amount += Number(bet.stake)
+            total_stake_amount += Number(bet.stake)
             total_amount += Number(bet.liability)
         })
 
@@ -824,13 +832,49 @@ export const getAllBets = async (req, res) => {
             totalPages: Math.ceil(totalBets / limit),
             count: bets.length,
             data: bets,
-            total_soda_amount,
+            total_stake_amount,
             total_amount,
             message: "All Bets fetched successfully",
         });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error" });
     }
+};
+export const getSingleBet = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Bet ID is required",
+      });
+    }
+
+    const bet = await Bet.findById(id)
+      .populate({
+        path: "user_id"
+      });
+
+    if (!bet) {
+      return res.status(404).json({
+        success: false,
+        message: "Bet not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: bet,
+      message: "Single bet fetched successfully",
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 
 
@@ -882,85 +926,92 @@ export const getProfitLossOfUsers = async (req, res) => {
 };
 
 export const getUsersWinOrLoss = async (req, res) => {
-    try {
-        // how many bets have user taken of casino type, sport type and third party type
-        // get all the settled bets of those and take their profit loss 
-        // and give total per user and final total of the platform 
-        // and from to also 
+  try {
+    let { from, to, search } = req.query;
 
-        let from = req.query.from || "";
-        let to = req.query.to || "";
+    let matchStage = {
+      bet_status: "settled"
+    };
 
-        let query = { account_type: "user" };
-
-        if (from != "" && to != "") {
-            query.createdAt = {
-                $gte: new Date(from),
-                $lte: new Date(to)
-            }
-        }
-
-        let search = req.query.search || "";
-
-        if (search != "") {
-            query.client_name = new RegExp(`^${search}`, "i");
-        }
-
-        let all_users = await user.find(query);
-
-        let overall_casino_amount = 0;
-        let overall_sport_amount = 0;
-        let overall_third_party_amount = 0;
-        let overall_profit_loss = 0;
-
-        all_users = await Promise.all(all_users.map(async (user) => {
-            let getAllbetsAmount = await Bet.find({ user_id: user._id, bet_status: "settled" });
-            // console.log("getAllbetsAmountgetAllbetsAmountgetAllbetsAmount",getAllbetsAmount)
-            let casino_amount = 0;
-            let sport_amount = 0;
-            let third_party_amount = 0;
-            let users_profit_loss = 0;
-
-            //// profit_loss,bet_sub_type:casino,sport,third_party
-            getAllbetsAmount.map((bet) => {
-                console.log("code came in this blockkkk", bet)
-                if (bet.bet_sub_type == "casino") {
-                    casino_amount += Number(bet.profit_loss)
-                } else if (bet.bet_sub_type == "sport") {
-                    sport_amount += Number(bet.profit_loss)
-                    console.log("sport_amount,sport_amount", sport_amount)
-                } else if (bet.bet_sub_type == "third_party") {
-                    third_party_amount += Number(bet.profit_loss)
-                }
-            })
-
-            // working till here 
-
-            users_profit_loss = casino_amount + sport_amount + third_party_amount
-
-            overall_casino_amount += casino_amount,
-                overall_sport_amount += sport_amount,
-                overall_third_party_amount += third_party_amount,
-                overall_profit_loss += users_profit_loss
-
-            return { ...user.toObject(), users_profit_loss, casino_amount, sport_amount, third_party_amount }
-        }))
-
-
-
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                all_users,
-                overall_casino_amount, overall_sport_amount, overall_third_party_amount, overall_profit_loss
-            },
-            message: "All Users Profit Loss fetched successfully"
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error" });
+    if (from && to) {
+      matchStage.settled_at = {
+        $gte: new Date(from),
+        $lte: new Date(to)
+      };
     }
-};
+
+    const aggregation = await Bet.aggregate([
+      {
+        $match: matchStage
+      },
+      {
+        $group: {
+          _id: "$user_id",
+          casino_amount: {
+            $sum: {
+              $cond: [{ $eq: ["$bet_sub_type", "casino"] }, "$profit_loss", 0]
+            }
+          },
+          sport_amount: {
+            $sum: {
+              $cond: [{ $eq: ["$bet_sub_type", "sport"] }, "$profit_loss", 0]
+            }
+          },
+          third_party_amount: {
+            $sum: {
+              $cond: [{ $eq: ["$bet_sub_type", "third_party"] }, "$profit_loss", 0]
+            }
+          },
+          users_profit_loss: { $sum: "$profit_loss" }
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+      { $unwind: "$user" }
+    ]);
+
+    // Optional search by client name
+    let filteredData = aggregation;
+
+    if (search) {
+      filteredData = aggregation.filter(item =>
+        item.user.client_name.toLowerCase().startsWith(search.toLowerCase())
+      );
+    }
+
+    let overall_casino_amount = 0;
+    let overall_sport_amount = 0;
+    let overall_third_party_amount = 0;
+    let overall_profit_loss = 0;
+
+    filteredData.forEach(item => {
+      overall_casino_amount += item.casino_amount;
+      overall_sport_amount += item.sport_amount;
+      overall_third_party_amount += item.third_party_amount;
+      overall_profit_loss += item.users_profit_loss;
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        all_users: filteredData,
+        overall_casino_amount,
+        overall_sport_amount,
+        overall_third_party_amount,
+        overall_profit_loss
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}; 
 
 
 export const getGeneralReport = async (req, res) => {

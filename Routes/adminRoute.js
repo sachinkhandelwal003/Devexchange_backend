@@ -13,7 +13,7 @@ import { changePassword } from "../Controllers/adminControllers.js"
 import { changeUserStatus } from "../Controllers/adminControllers.js"
 import { DownloadAccountListPdf } from "../Controllers/adminControllers.js"
 import { adminAccountStatement } from "../Controllers/adminControllers.js"
-import { getAllBets } from "../Controllers/adminControllers.js"
+import { getAllBets ,getSingleBet} from "../Controllers/adminControllers.js"
 import { getProfitLossOfUsers } from "../Controllers/adminControllers.js"
 import { getUsersWinOrLoss } from "../Controllers/adminControllers.js"
 import { DownloadUsersWinLossPdf } from "../Controllers/adminControllers.js"
@@ -45,6 +45,7 @@ router.get("/download-account-list-excel", verifyToken, verifyAdmin, DownloadAcc
 router.get("/admin-account-statement", verifyToken, verifyAdmin, adminAccountStatement)
 
 router.get("/get-all-bets", verifyToken, verifyAdmin, getAllBets);
+router.get("/get-bet/:id", verifyToken, verifyAdmin, getSingleBet);
 
 // profit loss reports of user
 router.get("/get-profit-loss-reports", verifyToken, verifyAdmin, getProfitLossOfUsers);

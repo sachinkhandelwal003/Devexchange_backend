@@ -13,7 +13,7 @@ export const createUser = async (req, res) => {
     const token_user = req.user;
 
     console.log("token userrrrrrrrrrrrrrr", token_user);
-    const { client_name, password } = req.body;
+    const { client_name, password ,created_by_id } = req.body;
 
     const userNameExists = await User.findOne({ client_name });
     if (userNameExists) {
@@ -35,6 +35,7 @@ export const createUser = async (req, res) => {
     const user = await User.create({
       ...req.body,
       password: hashedPassword,
+      created_by_id,
       transaction_password: hashedTransactionPassword,
       is_demo:false
     });
@@ -189,46 +190,55 @@ console.log("useruser",user)
 
 
 // --- 3. ADMIN LOGIN   sfdgsdfg---
+// --- ADMIN LOGIN ---
 export const loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
-    console.log("username and password", username, password);
-    const user = await User.findOne({ client_name: username });
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "Admin not found" });
 
-    // Strict Role Check
-    if (user.account_type !== "admin") {
-      return res
-        .status(403)
-        .json({ success: false, message: "Access Denied. Not an Admin." });
+    const user = await User.findOne({ client_name: username });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    // ✅ Allow only admin-type roles
+    if (!["admin", "agent"].includes(user.account_type)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access Denied. Use User Login.",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid Admin credentials" });
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
 
     const token = jwt.sign(
-      { id: user._id, role: "admin" },
+      { id: user._id, role: user.account_type }, // 🔥 dynamic role
       process.env.JWT_SECRET || "secret",
-      { expiresIn: "100d" },
+      { expiresIn: "100d" }
     );
 
     res.status(200).json({
       success: true,
-      message: "Admin Login Successful",
+      message: "Login Successful",
       token,
       data: user,
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
-
 export const AdminChangePassword = async (req, res) => {
   try {
     const { password, old_password } = req.body;

@@ -32,7 +32,12 @@ const userSchema = new mongoose.Schema(
       required: false,
 
     },
-
+    created_by_id: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+                required: false,
+                index: true,
+            },
     account_type: {
       type: String,
       enum: ["agent", "user", "admin", "admin_staff"],
