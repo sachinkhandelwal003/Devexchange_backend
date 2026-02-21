@@ -106,21 +106,40 @@ mongoose
        🔥 SEND TO FRONTEND EVERY 1 SEC
     =============================== */
 
-    setInterval(() => {
-      if (messageBuffer.length === 0) return;
+    let lastEtag = null;
+let lastTimestamp = null;
 
-      const batch = [...messageBuffer];
-      messageBuffer = [];
+setInterval(() => {
+  if (messageBuffer.length === 0) return;
 
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(batch));
-        }
-      });
+  const batch = [...messageBuffer];
+  messageBuffer = [];
 
-      console.log("📤 Sent batch to frontend:", batch.length);
+  const firstItem = batch[0];
 
-    }, 200);
+  const newEtag = firstItem.etag;
+  const newTimestamp = firstItem.timestamp;
+
+  if (newEtag !== lastEtag || newTimestamp !== lastTimestamp) {
+    console.log("🔥 NEW UPDATE RECEIVED");
+    console.log("ETAG:", newEtag);
+    console.log("TIMESTAMP:", newTimestamp);
+    console.log("MODIFIED:", firstItem.modified);
+
+    lastEtag = newEtag;
+    lastTimestamp = newTimestamp;
+  } else {
+    console.log("⚠️ SAME DATA (No Change)");
+  }
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(batch));
+    }
+  });
+
+}, 200);
+
   })
   .catch((error) => {
     console.error("MongoDB Connection Error:", error);
