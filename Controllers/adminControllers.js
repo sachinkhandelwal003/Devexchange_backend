@@ -1,35 +1,85 @@
-import user from "../models/user.js";
+import User  from "../models/user.js";
 import Transaction from "../models/transaction.js";
+ import AccountStatement from "../models/accountStatement.js"
+  import AccountStatementCategory from "../models/accountStatementCategories.js"
+
 import bcrypt from "bcryptjs"
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs"
 import Bet from "../models/bet.js";
 import Privilige from "../models/Priviliges.js";
+import mongoose from "mongoose";
+
+
+export const getOrCreateCategory = async (categoryName) => {
+  const category = await AccountStatementCategory.findOneAndUpdate(
+    { name: categoryName },
+    { $setOnInsert: { name: categoryName } },
+    { upsert: true, new: true }
+  );
+
+  return category._id;
+};
 
 export const getAdminAndUserCurrentBalance = async (req, res) => {
-    try {
-        let { user_id } = req.query;
-        let admin = await user.findOne({ account_type: "admin" }).select("current_balance");
-        let userExists = await user.findOne({ _id: user_id }).select("current_balance");
+  try {
+    const tokenUser = req.user; // from verifyToken middleware
+    const { user_id } = req.query;
 
-        return res.json({
-            status: "success",
-            data: {
-                admin_current_balance: admin.current_balance,
-                user_current_balance: userExists.current_balance
-            }
-        })
-
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    if (!tokenUser || !tokenUser.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
     }
-}
+
+    // 🔥 Get logged-in user's balance (Admin OR Agent)
+    const sender = await User
+      .findById(tokenUser.id)
+      .select("current_balance client_name account_type");
+
+    if (!sender) {
+      return res.status(404).json({
+        success: false,
+        message: "Logged user not found"
+      });
+    }
+
+    // 🔥 Get selected user's balance
+    const selectedUser = await User
+      .findById(user_id)
+      .select("current_balance client_name");
+
+    if (!selectedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Target user not found"
+      });
+    }
+
+    return res.json({
+      status: "success",
+      data: {
+        admin_current_balance: sender.current_balance, // dynamic (admin or agent)
+        admin_name: sender.client_name,
+        admin_role: sender.account_type,
+        user_current_balance: selectedUser.current_balance
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 
 
 export const getExposureLimit = async (req, res) => {
     try {
         let { user_id } = req.query;
-        let userExists = await user.findOne({ _id: user_id }).select("exposure_limit");
+        let userExists = await User.findOne({ _id: user_id }).select("exposure_limit");
 
         return res.json({
             status: "success",
@@ -47,7 +97,7 @@ export const getExposureLimit = async (req, res) => {
 export const getCreditLimit = async (req, res) => {
     try {
         let { user_id } = req.query;
-        let userExists = await user.findOne({ _id: user_id }).select("last_credit");
+        let userExists = await User.findOne({ _id: user_id }).select("last_credit");
 
         return res.json({
             status: "success",
@@ -64,7 +114,7 @@ export const getCreditLimit = async (req, res) => {
 export const getUserStatuses = async (req, res) => {
     try {
         let { user_id } = req.query;
-        let userExists = await user.findOne({ _id: user_id }).select("can_bet is_active");
+        let userExists = await User.findOne({ _id: user_id }).select("can_bet is_active");
         return res.json({
             status: "success",
             data: {
@@ -80,118 +130,191 @@ export const getUserStatuses = async (req, res) => {
 
 
 export const makeDepositTransaction = async (req, res) => {
-    try {
-        let { admins_previous_amount, users_previous_amount, admins_final_amount, users_final_amount, amount_to_send, remark, transaction_password, user_id } = req.body;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-        // check admins transaction password
-        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+  try {
+    const { amount_to_send, remark, transaction_password, user_id } = req.body;
+    const senderId = req.user.id;
 
-        let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
-
-        if (!compareTransactionPassword) {
-            return res.status(400).json({
-                message: "Transaction password didn't matched"
-            })
-        }
-        let userExists = await user.findOne({ _id: user_id }).select("current_balance");
-        if (!userExists) {
-            return res.json({ message: "No user exists" })
-        }
-
-
-        // user's accpunt balance should increase 
-        // superadmins account balance should decrease
-
-
-        // let admin = await user.findone({ account_type: "admin" });
-
-        // frontend will do the calculation from their side and we just needs to update the db
-
-        let updated_user = await user.findOneAndUpdate({ _id: user_id }, { current_balance: Number(users_final_amount) }, { new: true });
-        let updated_admin = await user.findOneAndUpdate({ account_type: "admin" }, { current_balance: Number(admins_final_amount) }, { new: true })
-
-
-        // make entry in transaction table 
-        let transaction = await Transaction.create({
-            transaction_type: "deposit_to_user_from_admin",
-            sender_id: updated_admin._id,
-            receiver_id: updated_user._id,
-            remark: remark,
-            sender_type: "admin",
-            receiver_type: "user",
-            amount: Number(amount_to_send),
-            admins_previous_amount: Number(admins_previous_amount),
-            users_previous_amount: Number(users_previous_amount),
-            admins_final_amount: Number(admins_final_amount),
-            users_final_amount: Number(users_final_amount)
-        });
-
-        return res.json({
-            status: "success",
-            message: "Money deposit successfully",
-            data: {
-                transaction: transaction, user: updated_user, admin: updated_admin
-            }
-        })
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    if (!amount_to_send || amount_to_send <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
     }
-}
+
+    // 🔹 Sender (Admin OR Agent)
+    const sender = await User.findById(senderId).session(session);
+    if (!sender) {
+      return res.status(404).json({ message: "Sender not found" });
+    }
+
+    // 🔐 Verify transaction password
+    const isMatch = bcrypt.compareSync(
+      transaction_password,
+      sender.transaction_password
+    );
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Transaction password incorrect" });
+    }
+
+    // 🔹 Receiver (Agent OR User)
+    const receiver = await User.findById(user_id).session(session);
+    if (!receiver) {
+      return res.status(404).json({ message: "Receiver not found" });
+    }
+
+    // 🔹 Balance check
+    if (sender.current_balance < amount_to_send) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    const senderPrevious = sender.current_balance;
+    const receiverPrevious = receiver.current_balance;
+
+    // 🔥 Update balances
+    sender.current_balance -= amount_to_send;
+    receiver.current_balance += amount_to_send;
+
+    await sender.save({ session });
+    await receiver.save({ session });
+
+    // 🔥 Transaction Entry
+    const transaction = await Transaction.create(
+      [{
+        transaction_type: "deposit",
+        sender_id: sender._id,
+        receiver_id: receiver._id,
+        sender_type: sender.account_type,     // admin / agent
+        receiver_type: receiver.account_type, // agent / user
+        amount: amount_to_send,
+        remark,
+        admins_previous_amount: senderPrevious,
+        admins_final_amount: sender.current_balance,
+        users_previous_amount: receiverPrevious,
+        users_final_amount: receiver.current_balance
+      }],
+      { session }
+    );
+
+    // 🔥 Account Statement (only for USER level)
+    if (receiver.account_type === "user") {
+      const categoryId = await getOrCreateCategory("deposit_withdraw_reports");
+
+      await AccountStatement.create({
+        customer_id: receiver._id,
+        credit: amount_to_send,
+        debit: 0,
+        remark: `Deposit from ${sender.account_type}`,
+        type: categoryId
+      });
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.json({
+      success: true,
+      message: "Deposit successful",
+      data: transaction[0]
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 export const makeWithdrawTransaction = async (req, res) => {
-    try {
-        let { admins_previous_amount, users_previous_amount, admins_final_amount, users_final_amount, amount_to_send, remark, transaction_password, user_id } = req.body;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-        // check admins transaction password
-        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+  try {
+    const { amount_to_send, remark, transaction_password, user_id } = req.body;
+    const receiverId = req.user.id; // Who is receiving money
 
-        let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
-
-        if (!compareTransactionPassword) {
-            return res.status(400).json({
-                message: "Transaction password didn't matched"
-            })
-        }
-        let userExists = await user.findOne({ _id: user_id }).select("current_balance");
-        if (!userExists) {
-            return res.json({ message: "No user exists" })
-        }
-
-        // let admin = await user.findone({ account_type: "admin" });
-
-        // frontend will do the calculation from their side and we just needs to update the db
-
-        let updated_user = await user.findOneAndUpdate({ _id: user_id }, { current_balance: Number(users_final_amount) }, { new: true });
-        let updated_admin = await user.findOneAndUpdate({ account_type: "admin" }, { current_balance: Number(admins_final_amount) }, { new: true })
-
-
-        // make entry in transaction table 
-        let transaction = await Transaction.create({
-            transaction_type: "withdraw_from_user_send_to_admin",
-            sender_id: updated_user._id,
-            receiver_id: updated_admin._id,
-            remark: remark,
-            sender_type: "user",
-            receiver_type: "admin",
-            amount: Number(amount_to_send),
-            admins_previous_amount: Number(admins_previous_amount),
-            users_previous_amount: Number(users_previous_amount),
-            admins_final_amount: Number(admins_final_amount),
-            users_final_amount: Number(users_final_amount)
-        });
-
-        return res.json({
-            status: "success",
-            message: "Money Withdrawn successfully from users side",
-            data: {
-                transaction: transaction, user: updated_user, admin: updated_admin
-            }
-        })
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    if (!amount_to_send || amount_to_send <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
     }
-}
+
+    const receiver = await User.findById(receiverId).session(session);
+    if (!receiver) {
+      return res.status(404).json({ message: "Receiver not found" });
+    }
+
+    const isMatch = bcrypt.compareSync(
+      transaction_password,
+      receiver.transaction_password
+    );
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Transaction password incorrect" });
+    }
+
+    const sender = await User.findById(user_id).session(session);
+    if (!sender) {
+      return res.status(404).json({ message: "Sender not found" });
+    }
+
+    if (sender.current_balance < amount_to_send) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    const senderPrevious = sender.current_balance;
+    const receiverPrevious = receiver.current_balance;
+
+    sender.current_balance -= amount_to_send;
+    receiver.current_balance += amount_to_send;
+
+    await sender.save({ session });
+    await receiver.save({ session });
+
+    const transaction = await Transaction.create(
+      [{
+        transaction_type: "withdraw",
+        sender_id: sender._id,
+        receiver_id: receiver._id,
+        sender_type: sender.account_type,
+        receiver_type: receiver.account_type,
+        amount: amount_to_send,
+        remark,
+        admins_previous_amount: receiverPrevious,
+        admins_final_amount: receiver.current_balance,
+        users_previous_amount: senderPrevious,
+        users_final_amount: sender.current_balance
+      }],
+      { session }
+    );
+
+    // 🔥 Account Statement for USER
+    if (sender.account_type === "user") {
+      const categoryId = await getOrCreateCategory("deposit_withdraw_reports");
+
+      await AccountStatement.create({
+        customer_id: sender._id,
+        credit: 0,
+        debit: amount_to_send,
+        remark: `Withdraw to ${receiver.account_type}`,
+        type: categoryId
+      });
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.json({
+      success: true,
+      message: "Withdraw successful",
+      data: transaction[0]
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 export const setExposureLimit = async (req, res) => {
@@ -199,7 +322,7 @@ export const setExposureLimit = async (req, res) => {
         let { old_exposure_limit, new_exposure_limit, transaction_password, user_id } = req.body;
 
         // check admins transaction password
-        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+        let admins_transaction_password = await User.findOne({ account_type: "admin" }).select("transaction_password")
 
         let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
 
@@ -208,16 +331,16 @@ export const setExposureLimit = async (req, res) => {
                 message: "Transaction password didn't matched"
             })
         }
-        let userExists = await user.findOne({ _id: user_id }).select("exposure_limit");
+        let userExists = await User.findOne({ _id: user_id }).select("exposure_limit");
         if (!userExists) {
             return res.json({ message: "No user exists" })
         }
 
-        let admin = await user.findOne({ account_type: "admin" });
+        let admin = await User.findOne({ account_type: "admin" });
 
         // frontend will do the calculation from their side and we just needs to update the db
 
-        let updated_user = await user.findOneAndUpdate({ _id: user_id }, { exposure_limit: Number(new_exposure_limit) }, { new: true });
+        let updated_user = await User.findOneAndUpdate({ _id: user_id }, { exposure_limit: Number(new_exposure_limit) }, { new: true });
 
         // make entry in transaction table 
         let transaction = await Transaction.create({
@@ -246,7 +369,7 @@ export const updateCreditReference = async (req, res) => {
         let { old_credit, new_credit, transaction_password, user_id } = req.body;
 
         // check admins transaction password
-        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+        let admins_transaction_password = await User.findOne({ account_type: "admin" }).select("transaction_password")
 
         let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
 
@@ -255,16 +378,16 @@ export const updateCreditReference = async (req, res) => {
                 message: "Transaction password didn't matched"
             })
         }
-        let userExists = await user.findOne({ _id: user_id }).select("exposure_limit");
+        let userExists = await User.findOne({ _id: user_id }).select("exposure_limit");
         if (!userExists) {
             return res.json({ message: "No user exists" })
         }
 
-        let admin = await user.findOne({ account_type: "admin" });
+        let admin = await User.findOne({ account_type: "admin" });
 
         // frontend will do the calculation from their side and we just needs to update the db
 
-        let updated_user = await user.findOneAndUpdate({ _id: user_id }, { credit_ref: Number(new_credit) }, { new: true });
+        let updated_user = await User.findOneAndUpdate({ _id: user_id }, { credit_ref: Number(new_credit) }, { new: true });
 
         // make entry in transaction table 
         let transaction = await Transaction.create({
@@ -293,7 +416,7 @@ export const changePassword = async (req, res) => {
     try {
         let { new_password, transaction_password, user_id } = req.body;
 
-        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+        let admins_transaction_password = await User.findOne({ account_type: "admin" }).select("transaction_password")
 
         let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
 
@@ -302,17 +425,17 @@ export const changePassword = async (req, res) => {
                 message: "Transaction password didn't matched"
             })
         }
-        let userExists = await user.findOne({ _id: user_id });
+        let userExists = await User.findOne({ _id: user_id });
         if (!userExists) {
             return res.status(400).json({ message: "No user exists" })
         }
 
 
-        let admin = await user.findOne({ account_type: "admin" });
+        let admin = await User.findOne({ account_type: "admin" });
 
         const salt = await bcrypt.genSalt(10);
         let hashedPassword = await bcrypt.hash(new_password, salt);
-        let User = await user.findOneAndUpdate({ _id: user_id }, { password: hashedPassword }, { new: true });
+        let User = await User.findOneAndUpdate({ _id: user_id }, { password: hashedPassword }, { new: true });
 
 
         return res.json({
@@ -331,7 +454,7 @@ export const changePassword = async (req, res) => {
 
 export const DownloadAccountListPdf = async (req, res) => {
     try {
-        const allUsers = await user
+        const allUsers = await User
             .find({ account_type: "user" })
             .sort({ createdAt: -1 });
 
@@ -390,7 +513,7 @@ export const DownloadUsersWinLossPdf = async (req, res) => {
             userQuery.client_name = new RegExp(`^${search}`, "i");
         }
 
-        const allUsers = await user.find(userQuery);
+        const allUsers = await User.find(userQuery);
 
         let overall_casino_amount = 0;
         let overall_sport_amount = 0;
@@ -526,7 +649,7 @@ export const DownloadUsersWinLossExcel = async (req, res) => {
             userQuery.client_name = new RegExp(`^${search}`, "i");
         }
 
-        const allUsers = await user.find(userQuery);
+        const allUsers = await User.find(userQuery);
 
         let overall_casino_amount = 0;
         let overall_sport_amount = 0;
@@ -636,7 +759,7 @@ export const DownloadUsersWinLossExcel = async (req, res) => {
 
 export const DownloadAccountListExcel = async (req, res) => {
     try {
-        const allUsers = await user
+        const allUsers = await User
             .find({ account_type: "user" })
             .sort({ createdAt: -1 });
 
@@ -690,65 +813,92 @@ export const DownloadAccountListExcel = async (req, res) => {
     }
 };
 
-// get all admin account statement
 export const adminAccountStatement = async (req, res) => {
-    try {
+  try {
+    const tokenUser = req.user;
+    const userId = new mongoose.Types.ObjectId(tokenUser.id);
 
-        let account_type = req.query.account_type || "all"; // all , withdraw/deposit_report 
-        let from = req.query.from || "";
-        let to = req.query.to || "";
-        let client_id = req.query.client_id || "";
-        let page = req.query.page ? Number(req.query.page) : 1;
-        let limit = req.query.limit ? Number(req.query.limit) : 10;
-        let skip = (page - 1) * limit;
+    let {
+      account_type,
+      from,
+      to,
+      client_id,
+      page = 1,
+      limit = 25
+    } = req.query;
 
-        let query = { sender_type: "admin" }
+    page = Number(page);
+    limit = Number(limit);
+    const skip = (page - 1) * limit;
 
-        if (client_id != "") {
-            query.receiver_id = client_id; // receiver will be user
+    let query = {
+      $or: [
+        { sender_id: userId },
+        { receiver_id: userId }
+      ]
+    };
+
+    // ✅ Client Filter
+    if (client_id) {
+      const clientObjectId = new mongoose.Types.ObjectId(client_id);
+      query.$and = [
+        {
+          $or: [
+            { sender_id: clientObjectId },
+            { receiver_id: clientObjectId }
+          ]
         }
-
-        if (account_type != "all") {
-            query.transaction_type = account_type;
-        }
-
-        if (from != "" && to != "") {
-            query.createdAt = {
-                $gte: new Date(from),
-                $lte: new Date(to)
-            }
-        }
-
-
-        let all_admin_statements = await Transaction.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
-        let totalCount = await Transaction.countDocuments(query);
-
-        return res.status(200).json({
-            status: "success",
-            data: all_admin_statements,
-            pagination: {
-                limit: limit,
-                page: page,
-                total: totalCount,
-                totalPages: Math.ceil(totalCount / limit)
-            }
-        })
-    } catch (error) {
-        if (!res.headersSent) {
-            res.status(500).json({
-                success: false,
-                message: "Account statements didnt came",
-                error: error.message,
-            });
-        }
+      ];
     }
+
+    // ✅ Transaction Type
+    if (account_type) {
+      query.transaction_type = account_type;
+    }
+
+    // ✅ DATE RANGE FILTER (IMPORTANT FIX)
+    if (from || to) {
+      query.createdAt = {};
+
+      if (from) {
+        query.createdAt.$gte = new Date(from + "T00:00:00.000Z");
+      }
+
+      if (to) {
+        query.createdAt.$lte = new Date(to + "T23:59:59.999Z");
+      }
+    }
+
+    const statements = await Transaction.find(query)
+      .populate("sender_id", "client_name account_type")
+      .populate("receiver_id", "client_name account_type")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Transaction.countDocuments(query);
+
+    return res.json({
+      success: true,
+      page,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: statements
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 export const changeUserStatus = async (req, res) => {
     try {
         let { is_active, can_bet, transaction_password, user_id } = req.body;
 
-        let admins_transaction_password = await user.findOne({ account_type: "admin" }).select("transaction_password")
+        let admins_transaction_password = await User.findOne({ account_type: "admin" }).select("transaction_password")
 
         let compareTransactionPassword = bcrypt.compareSync(transaction_password, admins_transaction_password.transaction_password);
 
@@ -757,12 +907,12 @@ export const changeUserStatus = async (req, res) => {
                 message: "Transaction password didn't matched"
             })
         }
-        let userExists = await user.findOne({ _id: user_id });
+        let userExists = await User.findOne({ _id: user_id });
         if (!userExists) {
             return res.status(400).json({ message: "No user exists" })
         }
         //is_active , can_bet
-        let updateUser = await user.findOneAndUpdate({ _id: user_id }, {
+        let updateUser = await User.findOneAndUpdate({ _id: user_id }, {
             is_active: is_active, can_bet: can_bet
         }, { new: true });
 
@@ -808,7 +958,7 @@ export const getAllBets = async (req, res) => {
 
     if (tokenUser.role === "agent") {
       // Get all users created by this agent
-      const users = await user.find({
+      const users = await User.find({
         created_by_id: tokenUser.id
       }).select("_id");
 
@@ -909,7 +1059,7 @@ export const getSingleBet = async (req, res) => {
     }
 
     if (tokenUser.role === "agent") {
-      const user = await user.findOne({
+      const user = await User.findOne({
         _id: bet.user_id._id,
         created_by_id: tokenUser.id
       });
@@ -985,25 +1135,64 @@ export const getProfitLossOfUsers = async (req, res) => {
     }
 };
 
+
+
 export const getUsersWinOrLoss = async (req, res) => {
   try {
-    let { from, to, search } = req.query;
+    const { from, to, search } = req.query;
+    const tokenUser = req.user;
 
     let matchStage = {
       bet_status: "settled"
     };
 
-    if (from && to) {
-      matchStage.settled_at = {
-        $gte: new Date(from),
-        $lte: new Date(to)
-      };
+    // ✅ Date filter
+    if (from || to) {
+      matchStage.settled_at = {};
+      if (from)
+        matchStage.settled_at.$gte = new Date(from + "T00:00:00.000Z");
+      if (to)
+        matchStage.settled_at.$lte = new Date(to + "T23:59:59.999Z");
     }
 
+    // ======================================
+    // 🔥 AGENT RESTRICTION (BASED ON TOKEN ROLE)
+    // ======================================
+
+    if (tokenUser.role === "agent") {
+      const agentUsers = await User.find({
+        created_by_id: new mongoose.Types.ObjectId(tokenUser.id),
+        account_type: "user"
+      }).select("_id");
+
+      const userIds = agentUsers.map(u => u._id);
+
+      // If no customers → return empty result
+      if (userIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            all_users: [],
+            overall_casino_amount: 0,
+            overall_sport_amount: 0,
+            overall_third_party_amount: 0,
+            overall_profit_loss: 0
+          }
+        });
+      }
+
+      matchStage.user_id = { $in: userIds };
+    }
+
+    // Admin → no restriction
+
+    // ======================================
+    // AGGREGATION
+    // ======================================
+
     const aggregation = await Bet.aggregate([
-      {
-        $match: matchStage
-      },
+      { $match: matchStage },
+
       {
         $group: {
           _id: "$user_id",
@@ -1025,6 +1214,7 @@ export const getUsersWinOrLoss = async (req, res) => {
           users_profit_loss: { $sum: "$profit_loss" }
         }
       },
+
       {
         $lookup: {
           from: "users",
@@ -1033,17 +1223,27 @@ export const getUsersWinOrLoss = async (req, res) => {
           as: "user"
         }
       },
+
       { $unwind: "$user" }
     ]);
 
-    // Optional search by client name
+    // ======================================
+    // SEARCH FILTER
+    // ======================================
+
     let filteredData = aggregation;
 
     if (search) {
       filteredData = aggregation.filter(item =>
-        item.user.client_name.toLowerCase().startsWith(search.toLowerCase())
+        item.user.client_name
+          .toLowerCase()
+          .includes(search.toLowerCase())
       );
     }
+
+    // ======================================
+    // TOTALS
+    // ======================================
 
     let overall_casino_amount = 0;
     let overall_sport_amount = 0;
@@ -1069,9 +1269,12 @@ export const getUsersWinOrLoss = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
-}; 
+};
 
 
 export const getGeneralReport = async (req, res) => {

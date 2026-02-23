@@ -42,7 +42,7 @@ router.get("/download-account-list-pdf", verifyToken, verifyAdmin, DownloadAccou
 router.get("/download-account-list-excel", verifyToken, verifyAdmin, DownloadAccountListExcel)
 
 // get admin account statement
-router.get("/admin-account-statement", verifyToken, verifyAdmin, adminAccountStatement)
+router.get("/admin-account-statement", verifyToken, adminAccountStatement)
 
 router.get("/get-all-bets", verifyToken, getAllBets);
 router.get("/get-bet/:id", verifyToken, getSingleBet);

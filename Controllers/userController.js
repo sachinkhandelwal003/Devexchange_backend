@@ -402,42 +402,47 @@ export const getAllUsers = async (req, res) => {
 
 export const getAllAccountStatements = async (req, res) => {
   try {
-    let page = req.query.page ? Number(req.query.page) : 1;
-    let limit = req.query.limit ? Number(req.query.limit) : 10;
-    let skip = (page - 1) * limit;
-    let customer = req.user;
+    const userId = req.user.id;   // ✅ directly from token
 
-    let to = req.query.to;
-    let from = req.query.from;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    let type = req.query.type || "";
+    const { from, to, type, search } = req.query;
 
-    let search = req.query.search || "";
-
+    // ✅ Always force token user id
     let query = {
-      customer_id: customer._id
+      customer_id: userId
+    };
+
+    // ✅ Filter by category id
+    if (type) {
+      query.type = { $in: [type] };
     }
 
-    if (type) {
-      query.type = {
-        $in: [
-          type
-        ]
+    // ✅ Search by remark
+    if (search) {
+      query.remark = { $regex: search, $options: "i" };
+    }
+
+    // ✅ Date filter (full day safe)
+    if (from || to) {
+      query.createdAt = {};
+
+      if (from) {
+        query.createdAt.$gte = new Date(from + "T00:00:00.000Z");
+      }
+
+      if (to) {
+        query.createdAt.$lte = new Date(to + "T23:59:59.999Z");
       }
     }
 
-    if (search != "") {
-      query.remark = { $regex: search, $options: "i" }
-    }
-
-
-    if (from || to) {
-      query.createdAt = {};
-      if (from) query.createdAt.$gte = new Date(from);
-      if (to) query.createdAt.$lte = new Date(to);
-    }
-
-    let statements = await AccountStatement.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
+    const statements = await AccountStatement.find(query)
+      .populate("type", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const totalStatements = await AccountStatement.countDocuments(query);
 
@@ -448,14 +453,16 @@ export const getAllAccountStatements = async (req, res) => {
       total: totalStatements,
       totalPages: Math.ceil(totalStatements / limit),
       count: statements.length,
-      data: statements,
-      message: "Account statements fetched successfully",
+      data: statements
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
-
 
 export const getProfile = async (req, res) => {
   try {

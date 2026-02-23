@@ -6,16 +6,16 @@ const transactionSchema = new mongoose.Schema({
         default: "",
         required: false
     },// deposit_to_user_from_admin , withdraw_from_user_send_to_admin , set_user_exposure_limit, set_credit_reference_to_user 
-    sender_id: {
-        type: String,
-        default: "",
-        required: false
-    },
-    receiver_id: {
-        type: String,
-        default: "",
-        required: false
-    },
+  sender_id: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  required: true
+},
+receiver_id: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  required: true
+},
     sender_type: {
         type: String,
         default: "",
@@ -76,7 +76,7 @@ const transactionSchema = new mongoose.Schema({
         default: 0,
         required: false
     }
-})
+},{ timestamps: true })
 
 
 const Transaction = mongoose.model("Transaction", transactionSchema, "Transaction");
